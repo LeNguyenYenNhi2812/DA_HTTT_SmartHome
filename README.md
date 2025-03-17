@@ -10,7 +10,7 @@
 # install django
 pip install django
 
-#run our program:
+# run our program:
 python manage.py runserver
 or:
 python3 manage.py runserver
