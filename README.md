@@ -8,10 +8,13 @@
 .\.env\Scripts\Activate.ps1
 
 # install 
-pip install django
-pip install djangorestframework
-pip install django-cors-headers
-pip install requests
+pip install django djangorestframework django-cors-headers requests
+
+or: 
+
+
+pip install -r requirements.txt
+
 
 # run our program:
 python manage.py runserver
