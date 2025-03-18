@@ -7,8 +7,11 @@
 # Active venv:
 .\.env\Scripts\Activate.ps1
 
-# install django
+# install 
 pip install django
+pip install djangorestframework
+pip install django-cors-headers
+pip install requests
 
 # run our program:
 python manage.py runserver
