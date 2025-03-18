@@ -16,15 +16,15 @@ from django.contrib.auth.models import AbstractUser
 # # Room Model
 # class Room(models.Model):
 #     name = models.CharField(max_length=255)
-#     roomId = models.CharField(max_length=255, unique=True)
 
-# # Device Model
+
+# Device Model
 # class Device(models.Model):
 #     name = models.CharField(max_length=255)
 #     type = models.CharField(max_length=100)
 #     status = models.CharField(max_length=50)
 #     brand = models.CharField(max_length=100)
-#     room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="devices")
+    # room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="devices")
 
 # # Sensor Model
 # class Sensor(models.Model):
