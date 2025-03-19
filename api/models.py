@@ -22,7 +22,7 @@ class Device(models.Model):
     deviceid = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)
     type = models.CharField(max_length=50)
-    status = models.BooleanField(blank=True, null=True)
+    value = models.CharField(max_length=20, blank=True, null=True)
     brand = models.CharField(max_length=50, blank=True, null=True)
     configuration = models.JSONField(blank=True, null=True)
 
@@ -84,7 +84,7 @@ class Sensor(models.Model):
     name = models.CharField(max_length=100)
     type = models.CharField(max_length=50)
     location = models.CharField(max_length=100, blank=True, null=True)
-    status = models.BooleanField(blank=True, null=True)
+    value = models.CharField(max_length=20, blank=True, null=True)
 
     class Meta:
          
@@ -114,7 +114,7 @@ class SensorSession(models.Model):
 class Session(models.Model):
     sessionid = models.AutoField(primary_key=True)
     event_time = models.DateTimeField(blank=True, null=True)
-    status = models.CharField(max_length=20, blank=True, null=True)
+    value = models.CharField(max_length=20, blank=True, null=True)
     action = models.TextField(blank=True, null=True)
 
     class Meta:
