@@ -56,7 +56,7 @@ class Person(models.Model):
          
         db_table = 'person'
 
-
+#ok
 class Room(models.Model):
     roomid = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)

@@ -3,6 +3,7 @@ import requests,json
 from django.http import HttpResponse,JsonResponse
 from dotenv import dotenv_values
 import os
+from django.utils.timezone import now
 from . import models
 
 from django.views.decorators.csrf import csrf_exempt
@@ -12,12 +13,11 @@ env_values = dotenv_values(".pas")  # Chỉ định đường dẫn file
 # Lấy API key từ file
 ADAFRUIT_IO_KEY = env_values.get("ADAFRUIT_IO_KEY")
 
-print("API Key Loaded:", ADAFRUIT_IO_KEY)  # Kiểm tra xem API key có được load khôn
+# print("API Key Loaded:", ADAFRUIT_IO_KEY)  # Kiểm tra xem API key có được load khôn
 headers = {
             "Content-Type": "application/json",
             "X-AIO-Key": ADAFRUIT_IO_KEY,
-        }
-@csrf_exempt     
+        }  
 def handleDataPOST(request,url):
     dataJson = json.loads(request.body)
     feedData = {
@@ -31,7 +31,6 @@ def handleDataPOST(request,url):
         return JsonResponse({"message": "Success", "status": response.status_code}, safe=False)
     else:
         return JsonResponse({"message": "Error", "status": response.status_code, "response": response.text}, safe=False)
-@csrf_exempt
 def handleDataGET(request,url):
     response = requests.get(url)
     if response.status_code == 200:
@@ -46,7 +45,6 @@ def handleDataGET(request,url):
     else:
         return JsonResponse("Error", safe=False)
     
-@csrf_exempt
 def deviceData(request, type):  #output
     device_map = {
         "fan": "smarthome-fan",
@@ -60,12 +58,23 @@ def deviceData(request, type):  #output
     url = f"https://io.adafruit.com/api/v2/nhu_lephanbao/feeds/{device_map[type]}/data"
 
     if request.method == "POST":
-        return handleDataPOST(request, url)
+        respond=handleDataPOST(request, url)
+        # if respond.status_code == 200 or respond.status_code == 201:
+        #     # Tìm deviceid trong database
+        #     try:
+        #         deviceid = models.Device.objects.filter(type=type).latest('deviceid')
+        #     except models.Device.DoesNotExist:
+        #         return JsonResponse({"message": "Device not found in database"}, status=404)
+        # models..objects.create(
+        #         event_time=now(),
+        #         value=json.loads(request.body).get("value"),
+        #         action=f"Data posted to Adafruit for {type}"
+        #     )
+        return respond
     elif request.method == "GET":
         return handleDataGET(request, url)
     else:
         return JsonResponse({"message": "Invalid request method"}, status=405)
-@csrf_exempt
 def sensorData(request, type): #input
     sensor_map = {
         "humidity": "smarthome-humidity",
@@ -81,7 +90,21 @@ def sensorData(request, type): #input
     url = f"https://io.adafruit.com/api/v2/nhu_lephanbao/feeds/{sensor_map[type]}/data"
 
     if request.method == "POST":
-        return handleDataPOST(request, url)
+        response = handleDataPOST(request, url)
+        if response.status_code == 200 or response.status_code == 201:
+            # Tìm sensorid trong database
+            try:
+                sensorid = models.Sensor.objects.filter(type=type).latest('sensorid')
+            except models.Sensor.DoesNotExist:
+                return JsonResponse({"message": "Sensor not found in database"}, status=404)
+
+        models.Session.objects.create(
+                event_time=now(),
+                value=json.loads(request.body).get("value"),
+                action=f"Data posted to Adafruit for {type}"
+            )
+        models.SensorSession.objects.create(sensorid=sensorid, sessionid=models.Session.objects.latest("sessionid"))
+        return response
     elif request.method == "GET":
         return handleDataGET(request, url)
     else:
@@ -90,6 +113,31 @@ def sensorData(request, type): #input
 def dbData(request):
     persons = models.Person.objects.all().values()  # Trả về QuerySet dạng dictionary
     return JsonResponse(list(persons), safe=False)
+def room(request):
 
+    if request.method == 'GET':
+        rooms = models.Room.objects.all().values()  
+        return JsonResponse(list(rooms), safe=False)
+    elif request.method == 'POST':
+        data = json.loads(request.body)
+        room = models.Room.objects.create(name=data['name'])
+        return JsonResponse({"message":"Insert successfully"}, safe=False)
+def sensorAdd(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        sensor = models.Sensor.objects.create(name=data['name'], type=data['type'], location=data['location'], value=data['value'])
+        return JsonResponse({"message":"Insert successfully"}, safe=False)
+    else:
+        return JsonResponse({"message":"Invalid request method"}, status=405)
 
+def deviceAdd(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        device = models.Device.objects.create(name=data['name'], type=data['type'], value=data['value'], brand = data['brand'], configuration = data['configuration'])
+        room = models.Room.objects.get(name=data['room-name'])  # Lấy phòng theo tên
+        roomid = room
+        models.DeviceRoom.objects.create(deviceid=models.Device.objects.filter(type=data['type']).latest('deviceid'), roomid=roomid)
+        return JsonResponse({"message":"Insert successfully"}, safe=False)
+    else:
+        return JsonResponse({"message":"Invalid request method"}, status=405)
             

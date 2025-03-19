@@ -7,4 +7,7 @@ urlpatterns = [
    path('device/<str:type>', views.deviceData, name='deviceData'),
    path('sensor/<str:type>', views.sensorData, name='sensorData'),
    path('dbData', views.dbData, name='dbData'),
+   path('room', views.room, name='room'),
+   path('sensorAdd', views.sensorAdd, name='sensorAdd'),
+   path('deviceAdd', views.deviceAdd, name='deviceAdd'),
 ]
