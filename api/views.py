@@ -3,6 +3,7 @@ import requests,json
 from django.http import HttpResponse,JsonResponse
 from dotenv import dotenv_values
 import os
+from . import models
 
 from django.views.decorators.csrf import csrf_exempt
 # Create your views here.
@@ -46,68 +47,9 @@ def handleDataGET(request,url):
         return JsonResponse("Error", safe=False)
     
 @csrf_exempt
-# def deviceData(request,type): 
-#     dataJson = json.loads(request.body)  
-#     deviceType = dataJson["type"]
-#     if deviceType == "humidity":
-#         url = "https://io.adafruit.com/api/v2/nhu_lephanbao/feeds/smarthome-humidity/data"
-#         if request.method == "POST":
-#             return handleDataPOST(request,url)
-#         elif request.method == "GET":
-#             return handleDataGET(request,url)
-#     elif deviceType == "fan":
-#         url = "https://io.adafruit.com/api/v2/nhu_lephanbao/feeds/smarthome-fan/data"
-#         if request.method == "POST":
-#             return handleDataPOST(request,url)
-#         elif request.method == "GET":
-#             return handleDataGET(request,url)
-#     elif deviceType == "light":
-#         url = "https://io.adafruit.com/api/v2/nhu_lephanbao/feeds/smarthome-light/data"
-#         if request.method == "POST":
-#             return handleDataPOST(request,url)
-#         elif request.method == "GET":
-#             return handleDataGET(request,url)
-#     elif deviceType == "temp":
-#         url = "https://io.adafruit.com/api/v2/nhu_lephanbao/feeds/smarthome-temp/data"
-#         if request.method == "POST":
-#             return handleDataPOST(request,url)
-#         elif request.method == "GET":
-#             return handleDataGET(request,url)
-#     elif deviceType == "soilhumidity":
-#         url = "https://io.adafruit.com/api/v2/nhu_lephanbao/feeds/smarthome-soilhumidity/data"
-#         if request.method == "POST":
-#             return handleDataPOST(request,url)
-#         elif request.method == "GET":
-#             return handleDataGET(request,url)
-#     elif deviceType == "pir":
-#         url = "https://io.adafruit.com/api/v2/nhu_lephanbao/feeds/smarthome-pir/data"
-#         if request.method == "POST":
-#             return handleDataPOST(request,url)
-#         elif request.method == "GET":
-#             return handleDataGET(request,url)
-#     elif deviceType == "led":
-#         url = "https://io.adafruit.com/api/v2/nhu_lephanbao/feeds/smarthome-led/data"
-#         if request.method == "POST":
-#             return handleDataPOST(request,url)
-#         elif request.method == "GET":
-#             return handleDataGET(request,url)
-#     elif deviceType == "waterpump":
-#         url = "https://io.adafruit.com/api/v2/nhu_lephanbao/feeds/smarthome-waterpump/data"
-#         if request.method == "POST":
-#             return handleDataPOST(request,url)
-#         elif request.method == "GET":
-#             return handleDataGET(request,url)
-#     else:
-#         return JsonResponse("Error", safe=False)
-    
-def deviceData(request, type):  
+def deviceData(request, type):  #output
     device_map = {
-        "humidity": "smarthome-humidity",
         "fan": "smarthome-fan",
-        "light": "smarthome-light",
-        "temp": "smarthome-temp",
-        "soilhumidity": "smarthome-soilhumidity",
-        "pir": "smarthome-pir",
         "led": "smarthome-led",
         "waterpump": "smarthome-waterpump"
     }
@@ -123,7 +65,31 @@ def deviceData(request, type):
         return handleDataGET(request, url)
     else:
         return JsonResponse({"message": "Invalid request method"}, status=405)
+@csrf_exempt
+def sensorData(request, type): #input
+    sensor_map = {
+        "humidity": "smarthome-humidity",
+        "light": "smarthome-light",
+        "temp": "smarthome-temp",
+        "soilhumidity": "smarthome-soilhumidity",
+        "pir": "smarthome-pir"
+    }
+
+    if type not in sensor_map:
+        return JsonResponse({"message": "Invalid device type"}, status=400)
+
+    url = f"https://io.adafruit.com/api/v2/nhu_lephanbao/feeds/{sensor_map[type]}/data"
+
+    if request.method == "POST":
+        return handleDataPOST(request, url)
+    elif request.method == "GET":
+        return handleDataGET(request, url)
+    else:
+        return JsonResponse({"message": "Invalid request method"}, status=405)
     
+def dbData(request):
+    persons = models.Person.objects.all().values()  # Trả về QuerySet dạng dictionary
+    return JsonResponse(list(persons), safe=False)
 
 
             
