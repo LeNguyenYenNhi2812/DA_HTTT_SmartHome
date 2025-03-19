@@ -1,13 +1,20 @@
 from django.shortcuts import render
 import requests,json
 from django.http import HttpResponse,JsonResponse
+from dotenv import dotenv_values
+import os
 
 from django.views.decorators.csrf import csrf_exempt
 # Create your views here.
+env_values = dotenv_values(".pas")  # Chỉ định đường dẫn file
 
+# Lấy API key từ file
+ADAFRUIT_IO_KEY = env_values.get("ADAFRUIT_IO_KEY")
+
+print("API Key Loaded:", ADAFRUIT_IO_KEY)  # Kiểm tra xem API key có được load khôn
 headers = {
             "Content-Type": "application/json",
-            "X-AIO-Key": "aio_JdqG45qYhkInpvaQaaB7T5kojLpB"
+            "X-AIO-Key": ADAFRUIT_IO_KEY,
         }
 @csrf_exempt     
 def handleDataPOST(request,url):
