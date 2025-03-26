@@ -1,131 +1,114 @@
-# This is an auto-generated Django model module.
-# You'll have to do the following manually to clean this up:
-#   * Rearrange models' order
-#   * Make sure each model has one field with primary_key=True
-#   * Make sure each ForeignKey and OneToOneField has `on_delete` set to the desired behavior
-#   * Remove ` ` lines if you wish to allow Django to create, modify, and delete the table
-# Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
+from django.contrib.auth.models import AbstractUser
 
-
-class Admin(models.Model):
-    adminid = models.OneToOneField('Person', models.DO_NOTHING, db_column='adminid', primary_key=True)
-    user_management = models.BooleanField(blank=True, null=True)
-    permission_control = models.BooleanField(blank=True, null=True)
+class User(AbstractUser):
+    user_id = models.AutoField(primary_key=True)
+    ssn = models.CharField(max_length=20, unique=True)
+    username = models.CharField(max_length=20, unique=True)
+    name = models.CharField(max_length=100)
+    email = models.EmailField(unique=True)
+    password = models.CharField(max_length=255)
+    phone = models.CharField(max_length=20, null=True, blank=True)
+    address = models.TextField(null=True, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    groups = models.ManyToManyField(
+        'auth.Group', 
+        related_name='custom_user_groups',
+        blank=True
+    )
+    
+    user_permissions = models.ManyToManyField(
+        'auth.Permission',
+        related_name='custom_user_permissions', 
+        blank=True
+    )
 
     class Meta:
-         
-        db_table = 'admin'
+        # Important for using a custom user model
+        swappable = 'AUTH_USER_MODEL'
 
+class House(models.Model):
+    house_id = models.AutoField(primary_key=True)
+    location = models.CharField(max_length=255)
+    admin = models.ForeignKey(User, on_delete=models.CASCADE)
+
+class HouseMember(models.Model):
+    house_member_id = models.AutoField(primary_key=True)
+    house = models.ForeignKey(House, on_delete=models.CASCADE)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    joined_at = models.DateTimeField(auto_now_add=True)
+    role = models.CharField(max_length=50, choices=[
+        ('ADMIN', 'Admin'),
+        ('MEMBER', 'Member')
+    ])
+
+class Room(models.Model):
+    room_id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100)
+    house = models.ForeignKey(House, on_delete=models.CASCADE)
+    level = models.IntegerField(null=True, blank=True)
 
 class Device(models.Model):
-    deviceid = models.AutoField(primary_key=True)
+    device_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)
     type = models.CharField(max_length=50)
-    value = models.CharField(max_length=20, blank=True, null=True)
-    brand = models.CharField(max_length=50, blank=True, null=True)
-    configuration = models.JSONField(blank=True, null=True)
-
-    class Meta:
-         
-        db_table = 'device'
-
-
-class DeviceRoom(models.Model):
-    deviceid = models.OneToOneField(Device, models.DO_NOTHING, db_column='deviceid', primary_key=True)  # The composite primary key (deviceid, roomid) found, that is not supported. The first column is selected.
-    roomid = models.ForeignKey('Room', models.DO_NOTHING, db_column='roomid')
-
-    class Meta:
-         
-        db_table = 'device_room'
-        unique_together = (('deviceid', 'roomid'),)
-
-
-class Person(models.Model):
-    personid = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=100)
-    email = models.CharField(unique=True, max_length=100)
-    ssn = models.CharField(unique=True, max_length=20)
-    username = models.CharField(unique=True, max_length=50)
-    password = models.TextField()
-    address = models.TextField(blank=True, null=True)
-    phone = models.CharField(max_length=15, blank=True, null=True)
-    date_of_birth = models.DateField(blank=True, null=True)
-
-    class Meta:
-         
-        db_table = 'person'
-
-#ok
-class Room(models.Model):
-    roomid = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=100)
-
-    class Meta:
-         
-        db_table = 'room'
-
-
-class Schedule(models.Model):
-    scheduleid = models.AutoField(primary_key=True)
-    name = models.CharField(max_length=100)
-    description = models.TextField(blank=True, null=True)
-    activation_time = models.DateTimeField()
-    deactivation_time = models.DateTimeField()
-    personid = models.ForeignKey(Person, models.DO_NOTHING, db_column='personid', blank=True, null=True)
-
-    class Meta:
-         
-        db_table = 'schedule'
-
+    brand = models.CharField(max_length=50, null=True, blank=True)
+    value = models.CharField(max_length=255, null=True, blank=True)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE)
+    on_off = models.BooleanField(default=False)
+    level = models.IntegerField(null=True, blank=True)
 
 class Sensor(models.Model):
-    sensorid = models.AutoField(primary_key=True)
+    sensor_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)
     type = models.CharField(max_length=50)
-    location = models.CharField(max_length=100, blank=True, null=True)
-    value = models.CharField(max_length=20, blank=True, null=True)
+    location = models.CharField(max_length=100, null=True, blank=True)
+    value = models.CharField(max_length=255, null=True, blank=True)
+    sign = models.CharField(max_length=10, null=True, blank=True)
+    threshold = models.FloatField(null=True, blank=True)
+    room = models.ForeignKey(Room, on_delete=models.CASCADE)
 
-    class Meta:
-         
-        db_table = 'sensor'
+class LogDevice(models.Model):
+    log_device_id = models.AutoField(primary_key=True)
+    device = models.ForeignKey(Device, on_delete=models.CASCADE)
+    time = models.DateTimeField(auto_now_add=True)
+    action = models.CharField(max_length=100)
+    on_off = models.BooleanField(null=True, blank=True)
+    level = models.IntegerField(null=True, blank=True)
 
+class LogSensor(models.Model):
+    log_sensor_id = models.AutoField(primary_key=True)
+    sensor = models.ForeignKey(Sensor, on_delete=models.CASCADE)
+    time = models.DateTimeField(auto_now_add=True)
+    action = models.CharField(max_length=100)
+    on_off = models.BooleanField(null=True, blank=True)
+    level = models.IntegerField(null=True, blank=True)
 
-class SensorDevice(models.Model):
-    sensorid = models.OneToOneField(Sensor, models.DO_NOTHING, db_column='sensorid', primary_key=True)  # The composite primary key (sensorid, deviceid) found, that is not supported. The first column is selected.
-    deviceid = models.ForeignKey(Device, models.DO_NOTHING, db_column='deviceid')
+class Schedule(models.Model):
+    schedule_id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100)
+    time = models.DateTimeField()
+    description = models.TextField(null=True, blank=True)
+    person = models.ForeignKey(User, on_delete=models.CASCADE)
+    action = models.CharField(max_length=100)
+    on_off = models.BooleanField(null=True, blank=True)
+    level = models.IntegerField(null=True, blank=True)
 
-    class Meta:
-         
-        db_table = 'sensor_device'
-        unique_together = (('sensorid', 'deviceid'),)
+class PlanDevice(models.Model):
+    plan_device_id = models.AutoField(primary_key=True)
+    plan = models.ForeignKey('Plan', on_delete=models.CASCADE)
+    device = models.ForeignKey(Device, on_delete=models.CASCADE)
+    added_at = models.DateTimeField(auto_now_add=True)
 
+class PlanSensor(models.Model):
+    plan_sensor_id = models.AutoField(primary_key=True)
+    plan = models.ForeignKey('Plan', on_delete=models.CASCADE)
+    sensor = models.ForeignKey(Sensor, on_delete=models.CASCADE)
+    added_at = models.DateTimeField(auto_now_add=True)
 
-class SensorSession(models.Model):
-    sensorid = models.OneToOneField(Sensor, models.DO_NOTHING, db_column='sensorid', primary_key=True)  # The composite primary key (sensorid, sessionid) found, that is not supported. The first column is selected.
-    sessionid = models.ForeignKey('Session', models.DO_NOTHING, db_column='sessionid')
-
-    class Meta:
-         
-        db_table = 'sensor_session'
-        unique_together = (('sensorid', 'sessionid'),)
-
-
-class Session(models.Model):
-    sessionid = models.AutoField(primary_key=True)
-    event_time = models.DateTimeField(blank=True, null=True)
-    value = models.CharField(max_length=20, blank=True, null=True)
-    action = models.TextField(blank=True, null=True)
-
-    class Meta:
-         
-        db_table = 'session'
-
-
-class Users(models.Model):
-    userid = models.OneToOneField(Person, models.DO_NOTHING, db_column='userid', primary_key=True)
-    sensor_access = models.BooleanField(blank=True, null=True)
-
-    class Meta:
-         
-        db_table = 'users'
+class Plan(models.Model):
+    plan_id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=100)
+    and_or = models.CharField(max_length=10, choices=[('AND', 'And'), ('OR', 'Or')])
+    devices = models.ManyToManyField(Device, through='PlanDevice')
+    sensors = models.ManyToManyField(Sensor, through='PlanSensor')

@@ -37,7 +37,7 @@ def handleDataGET(request,url):
         data = response.json()
 
         filteredData = [
-            {i: x for i,x in item.items() if i not in ["created_epoch", "expiration"]}
+            {i: x for i,x in item.items() if True}
             for item in data
 
         ]

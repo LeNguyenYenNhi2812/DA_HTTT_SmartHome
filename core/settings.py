@@ -11,7 +11,16 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+from dotenv import dotenv_values
+env_values = dotenv_values(".pas")  # Chỉ định đường dẫn file
 
+# Lấy API key từ file
+myNAME = env_values.get("myNAME")
+myUSER = env_values.get("myUSER")
+myPASSWORD = env_values.get("myPASSWORD")
+myHOST = env_values.get("myHOST")
+myPORT = env_values.get("myPORT")
+# print("API Key Loaded:", myNAME)  # Kiểm tra xem API key có được load khôn
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -82,11 +91,11 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'smartHome',
-        'USER': 'postgres',
-        'PASSWORD': '12345',
-        'HOST': 'localhost', 
-        'PORT': '5432',
+        'NAME': myNAME,
+        'USER': myUSER,
+        'PASSWORD': myPASSWORD,
+        'HOST': myHOST, 
+        'PORT': myPORT,
     }
 }
 
@@ -131,3 +140,6 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Add this near the bottom of your settings.py file
+AUTH_USER_MODEL = 'api.User'
