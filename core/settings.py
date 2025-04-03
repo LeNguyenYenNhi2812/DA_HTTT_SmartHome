@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'api',
     'rest_framework',
     'corsheaders',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -143,3 +144,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Add this near the bottom of your settings.py file
 AUTH_USER_MODEL = 'api.User'
+# settings.py
+CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Using Redis as broker
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+# Thêm vào cuối settings.py
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
