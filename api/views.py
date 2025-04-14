@@ -10,6 +10,7 @@ from . import models
 from django_celery_beat.models import PeriodicTask, IntervalSchedule
 import json
 from django.views.decorators.csrf import csrf_exempt
+from django.utils.dateparse import parse_datetime
 # Create your views here.
 env_values = dotenv_values(".pas")  # Chỉ định đường dẫn file
 
@@ -72,7 +73,40 @@ def getRoomSensorData(request,roomid):
         })
     return JsonResponse(sensorData, safe=False)
 
+def getRoomSensorDataTime(request,roomid):
+    # return JsonResponse({"message": "Invalid request method"}, status=405)
+    if request.method != "GET":
+        return JsonResponse({"message": "Invalid request method"}, status=405)
 
+    try:
+        data = json.loads(request.body)
+        room_id = data.get("room_id")
+        start_time = parse_datetime(data.get("start_time"))
+        end_time = parse_datetime(data.get("end_time"))
+        if not all([room_id, start_time, end_time]):
+            return JsonResponse({"message": "room_id, start_time, and end_time are required"}, status=400)
+        
+        sensors = models.Sensor.objects.filter(room_id=room_id)
+        sensor_ids=sensors.values_list("sensor_id", flat=True)
+
+        logs = models.LogSensor.objects.filter(sensor_id__in=sensor_ids, time__range=(start_time, end_time)).select_related("sensor")
+        # print("logs",logs)
+        sensorData=[]
+        for log in logs:
+            sensorData.append(
+                {
+                "sensor_id": log.sensor.sensor_id,
+                "sensor_name": log.sensor.name,
+                "type": log.sensor.type,
+                "value": log.value,
+                "time": log.time,
+                "action": log.action,
+
+                }
+            )
+        return JsonResponse(sensorData, safe=False)
+    except json.JSONDecodeError:
+        return JsonResponse({"message": "Invalid JSON format"}, status=400)
 # Create Device
 def createDevice(request):
     if request.method != "POST":
@@ -123,6 +157,8 @@ def postDeviceData(request):
     device_id = data.get("device_id")
     on_off = data.get("on_off")
     value = data.get("value")
+    value = int(value)  # Chuyển đổi về kiểu số nguyên nếu có giá trị
+    value= device_id*1000+ value
     pinned = data.get("pinned")
     user_id = data.get("user_id")
 
@@ -155,8 +191,8 @@ def postDeviceData(request):
 
     url = f"https://io.adafruit.com/api/v2/nhu_lephanbao/feeds/{device_map[device.type]}/data"
 
-    #Gửi dữ liệu lên Adafruit IO
-    adafruit_response = handleDataPOST(request, url)
+
+    
     models.LogDevice.objects.create(
         device=device,
         action="Device state updated",
@@ -164,10 +200,97 @@ def postDeviceData(request):
         value=value,  # Giả sử level là giá trị của thiết bị
     )  
 
+    #Gửi dữ liệu lên Adafruit IO
+    fake_request = request
+    value = str(value)
+    value = "0"+value
+    fake_request._body = json.dumps({"value": value}).encode()
+    adafruit_response = handleDataPOST(fake_request, url)
 
   
 
     return JsonResponse({"message": "Device updated successfully"}, status=200)
+
+def getNumberOfDevices(request,houseid):
+    if request.method != "GET":
+        return JsonResponse({"message": "Invalid request method"}, status=405)
+
+    try:
+        
+        house_id = houseid
+
+        if not house_id:
+            return JsonResponse({"message": "house_id is required"}, status=400)
+
+        # Lấy tất cả Room thuộc House
+        rooms = models.Room.objects.filter(house_id=house_id)
+        room_ids = rooms.values_list("room_id", flat=True)
+
+        # Đếm số lượng Device thuộc các Room đó
+        device_count = models.Device.objects.filter(room_id__in=room_ids).count()
+
+        return JsonResponse({"device_count": device_count}, status=200)
+    except Exception as e:
+        return JsonResponse({"message": "Error", "error": str(e)}, status=500)
+
+    
+    
+def getAllDevices(request, houseid):
+    if request.method != "GET":
+        return JsonResponse({"message": "Invalid request method"}, status=405)
+
+    try:
+        if not houseid:
+            return JsonResponse({"message": "house_id is required"}, status=400)
+
+        rooms = models.Room.objects.filter(house_id=houseid)
+        result = []
+
+        for room in rooms:
+            devices = models.Device.objects.filter(room=room)
+            devices_data = [
+                {
+                    "device_id": device.device_id,
+                    "name": device.name,
+                    "type": device.type,
+                    "brand": device.brand,
+                    "value": device.value,
+                    "on_off": device.on_off,
+                    "pinned": device.pinned,
+                    "date_created": device.date_created,
+                }
+                for device in devices
+            ]
+
+            result.append({
+                "room_id": room.room_id,
+                "room_title": room.name,
+                "devices": devices_data
+            })
+
+        return JsonResponse(result, safe=False)
+    
+    except Exception as e:
+        return JsonResponse({"message": "Error", "error": str(e)}, status=500)
+
+def getNumberDevicesInRoom(request, roomid):
+    if request.method != "GET":
+        return JsonResponse({"message": "Invalid request method"}, status=405)
+
+    try:
+        room_id = roomid
+
+        if not room_id:
+            return JsonResponse({"message": "room_id is required"}, status=400)
+
+        # Lấy tất cả Device thuộc Room
+        devices = models.Device.objects.filter(room_id=room_id)
+        device_count = devices.count()
+
+        return JsonResponse({"device_count": device_count}, status=200)
+    except Exception as e:
+        return JsonResponse({"message": "Error", "error": str(e)}, status=500)
+
 
 # thêm sénor
 def postSensorData(request):
@@ -192,7 +315,7 @@ def postSensorData(request):
 def run_sensor_log(request):
     # Tạo khoảng lặp 1 phút (nếu chưa có)
     schedule, _ = IntervalSchedule.objects.get_or_create(
-        every=1,
+        every=10,
         period=IntervalSchedule.MINUTES,
     )
 

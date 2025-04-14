@@ -46,7 +46,7 @@ class Device(models.Model):
     name = models.CharField(max_length=100)
     type = models.CharField(max_length=50)
     brand = models.CharField(max_length=50, null=True, blank=True)
-    value = models.CharField(max_length=255, null=True, blank=True)
+    value = models.IntegerField(null=True, blank=True)
     room = models.ForeignKey(Room, on_delete=models.CASCADE)
     on_off = models.BooleanField(default=False)
     pinned = models.BooleanField(default=False)  # Thêm trường pinned vào model Device
@@ -58,7 +58,7 @@ class Sensor(models.Model):
     name = models.CharField(max_length=100)
     type = models.CharField(max_length=50)
     location = models.CharField(max_length=100, null=True, blank=True)
-    value = models.CharField(max_length=255, null=True, blank=True)
+    value = models.IntegerField(null=True, blank=True)
     room = models.ForeignKey(Room, on_delete=models.CASCADE)
 
 class LogDevice(models.Model):
@@ -67,14 +67,14 @@ class LogDevice(models.Model):
     time = models.DateTimeField(auto_now_add=True)
     action = models.CharField(max_length=100)
     on_off = models.BooleanField(null=True, blank=True)
-    value = models.CharField(max_length=255, null=True, blank=True)
+    value = models.IntegerField(null=True, blank=True)
 
 class LogSensor(models.Model):
     log_sensor_id = models.AutoField(primary_key=True)
     sensor = models.ForeignKey(Sensor, on_delete=models.CASCADE)
     time = models.DateTimeField(auto_now_add=True)
     action = models.CharField(max_length=100)
-    value = models.CharField(max_length=255, null=True, blank=True)
+    value = models.IntegerField(null=True, blank=True)
 
 class Schedule(models.Model):
     schedule_id = models.AutoField(primary_key=True)
@@ -84,7 +84,7 @@ class Schedule(models.Model):
     person = models.ForeignKey(User, on_delete=models.CASCADE)
     action = models.CharField(max_length=100)
     on_off = models.BooleanField(null=True, blank=True)
-    value = models.CharField(max_length=255, null=True, blank=True)
+    value = models.IntegerField(null=True, blank=True)
 
 class PlanDevice(models.Model):
     plan_device_id = models.AutoField(primary_key=True)

@@ -35,9 +35,7 @@ def fetch_sensor_data():
                 sensor.value = new_value
                 sensor.save()
                 sensor.refresh_from_db()
-                print("Sau khi lưu, sensor.value:", sensor.value)
-                # log_message = f"Sensor data fetched for {sensor.type} in room {sensor.location}"
-                # Đồng thời tạo log cho sensor
+                # print("Sau khi lưu, sensor.value:", sensor.value)
                 models.LogSensor.objects.create(
                     time=first_item.get("created_at"),
                     action=f"Sensor data fetched for {sensor.type} in room {sensor.location}",
