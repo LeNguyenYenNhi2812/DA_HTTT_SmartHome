@@ -11,7 +11,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
-from dotenv import dotenv_values
+from dotenv import dotenv_values # type: ignore
 env_values = dotenv_values(".pas")  # Chỉ định đường dẫn file
 
 # Lấy API key từ file

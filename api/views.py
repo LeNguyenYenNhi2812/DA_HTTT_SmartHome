@@ -1,16 +1,16 @@
-from django.shortcuts import render
+from django.shortcuts import render # type: ignore
 import requests,json
-from django.http import HttpResponse,JsonResponse
-from dotenv import dotenv_values
-from django.test import RequestFactory
+from django.http import HttpResponse,JsonResponse # type: ignore
+from dotenv import dotenv_values # type: ignore
+from django.test import RequestFactory # type: ignore
 from . import task
-from django.utils.timezone import now
+from django.utils.timezone import now # type: ignore
 from . import models
 
-from django_celery_beat.models import PeriodicTask, IntervalSchedule
+from django_celery_beat.models import PeriodicTask, IntervalSchedule # type: ignore
 import json
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.dateparse import parse_datetime
+from django.views.decorators.csrf import csrf_exempt # type: ignore
+from django.utils.dateparse import parse_datetime # type: ignore
 # Create your views here.
 env_values = dotenv_values(".pas")  # Chỉ định đường dẫn file
 

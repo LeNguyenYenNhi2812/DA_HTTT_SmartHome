@@ -1,5 +1,5 @@
-from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.db import models # type: ignore
+from django.contrib.auth.models import AbstractUser # type: ignore
 
 class User(AbstractUser):
     user_id = models.AutoField(primary_key=True)
