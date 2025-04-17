@@ -4,13 +4,17 @@ from django.http import JsonResponse  # type: ignore # Import JsonResponse
 from rest_framework.views import APIView # type: ignore
 from rest_framework_simplejwt.tokens import RefreshToken # type: ignore
 from rest_framework.permissions import IsAuthenticated # type: ignore
+from rest_framework.permissions import AllowAny
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+
 from api.models import User  # Import model User từ api
 from .serializers import UserRegistrationSerializer
 from django.contrib.auth import authenticate # type: ignore
 from rest_framework import status  # type: ignore # Import status để sử dụng các mã trạng thái HTTP
 import logging
 class RegisterView(APIView):
-    permission_classes = []
+    permission_classes = [AllowAny]
     def post(self, request):
         # Lấy dữ liệu từ request
         serializer = UserRegistrationSerializer(data=request.data)
@@ -24,6 +28,37 @@ class RegisterView(APIView):
             return JsonResponse({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 class LoginView(APIView):
+    permission_classes = [AllowAny]  # Cho phép tất cả người dùng truy cập vào view này
+
+    @swagger_auto_schema(
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            "username": openapi.Schema(
+                type=openapi.TYPE_STRING, description="Username"
+            ),
+            "password": openapi.Schema(
+                type=openapi.TYPE_STRING, description="Password"
+            ),
+        },
+    ),
+    responses={
+        status.HTTP_200_OK: openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "status": openapi.Schema(type=openapi.TYPE_NUMBER),
+                "message": openapi.Schema(type=openapi.TYPE_STRING),
+            },
+        ),
+        status.HTTP_400_BAD_REQUEST: openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                "status": openapi.Schema(type=openapi.TYPE_NUMBER),
+                "message": openapi.Schema(type=openapi.TYPE_STRING),
+            },
+        ),
+    },
+)
     def post(self, request):
         # print("hello")
         # logging.debug(f"Attempting to authenticate user: {request.data.get('username')}")
