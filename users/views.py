@@ -1,0 +1,56 @@
+# users/views.py
+
+from django.http import JsonResponse  # type: ignore # Import JsonResponse
+from rest_framework.views import APIView # type: ignore
+from rest_framework_simplejwt.tokens import RefreshToken # type: ignore
+from rest_framework.permissions import IsAuthenticated # type: ignore
+from api.models import User  # Import model User từ api
+from .serializers import UserRegistrationSerializer
+from django.contrib.auth import authenticate # type: ignore
+from rest_framework import status  # type: ignore # Import status để sử dụng các mã trạng thái HTTP
+import logging
+class RegisterView(APIView):
+    permission_classes = []
+    def post(self, request):
+        # Lấy dữ liệu từ request
+        serializer = UserRegistrationSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            # Tạo người dùng và lưu vào cơ sở dữ liệu
+            serializer.save()
+            return JsonResponse({"message": "User registered successfully"}, status=status.HTTP_201_CREATED)
+        else:
+            # Nếu có lỗi trong quá trình đăng ký, trả về lỗi
+            return JsonResponse({"errors": serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+class LoginView(APIView):
+    def post(self, request):
+        # print("hello")
+        # logging.debug(f"Attempting to authenticate user: {request.data.get('username')}")
+        username = request.data.get("username")
+        password = request.data.get("password")
+        # print(f"Attempting to authenticate user: {username}")
+        user = authenticate(username=username, password=password)
+        # print("hello", user)
+        if user:
+            # Tạo refresh token và access token
+            refresh = RefreshToken.for_user(user)
+            return JsonResponse({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            })
+        else:
+            return JsonResponse({"message": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
+
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        refresh_token = request.data.get("refresh_token")
+        try:
+            # Hủy refresh token
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return JsonResponse({"message": "Logged out successfully"}, status=status.HTTP_205_RESET_CONTENT)
+        except Exception as e:
+            return JsonResponse({"message": "Invalid refresh token", "error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

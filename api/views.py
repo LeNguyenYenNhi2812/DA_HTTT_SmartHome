@@ -293,14 +293,14 @@ def getNumberDevicesInRoom(request, roomid):
 
 
 # thêm sénor
-def postSensorData(request):
+def createSensor(request):
     if request.method != "POST":
         return JsonResponse({"message": "Invalid request method"}, status=405)
     data = json.loads(request.body)
     name = data.get("name")
     type = data.get("type")
     location = data.get("location")
-    value = data.get("value")
+    value = 0
     room_id = data.get("room_id")
     sensor = models.Sensor.objects.create(
         name=name,
