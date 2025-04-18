@@ -51,7 +51,7 @@ class Device(models.Model):
     on_off = models.BooleanField(default=False)
     pinned = models.BooleanField(default=False)  # Thêm trường pinned vào model Device
     date_created = models.DateTimeField(auto_now_add=True)  # Thêm trường date_created vào model Device
-    user_id = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)  # Thêm trường user_id vào model Device
+    id = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)  
 
 class Sensor(models.Model):
     sensor_id = models.AutoField(primary_key=True)

@@ -6,7 +6,9 @@ from django.test import RequestFactory # type: ignore
 from . import task
 from django.utils.timezone import now # type: ignore
 from . import models
-
+import datetime
+from django.db.models import Count
+from django.utils import timezone
 from django_celery_beat.models import PeriodicTask, IntervalSchedule # type: ignore
 import json
 from django.views.decorators.csrf import csrf_exempt # type: ignore
@@ -120,7 +122,7 @@ def createDevice(request):
     room_id = data.get("room_id")
     on_off = data.get("on_off")
     pinned = data.get("pinned", False)  # Thêm trường pinned
-    user_id = data.get("user_id")
+    id = data.get("id")
 
     if not name or not type or not room_id:
         return JsonResponse({"message": "name, type, and room_id are required"}, status=400)
@@ -131,9 +133,9 @@ def createDevice(request):
         return JsonResponse({"message": "Room not found"}, status=404)
 
     user = None
-    if user_id:
+    if id:
         try:
-            user = models.User.objects.get(user_id=user_id)  # Lấy instance của User (nếu có)
+            user = models.User.objects.get(id=id)  # Lấy instance của User (nếu có)
         except models.User.DoesNotExist:
             return JsonResponse({"message": "User not found"}, status=404)
 
@@ -145,7 +147,7 @@ def createDevice(request):
         room_id=room_id,
         on_off=on_off,
         pinned=pinned,  # Thêm trường pinned
-        user_id=user,  # Thêm trường user_id
+        id=user,  
     )
 
     return JsonResponse({"message": "Device created successfully", "device_id": device.device_id}, status=201)
@@ -157,10 +159,10 @@ def postDeviceData(request):
     device_id = data.get("device_id")
     on_off = data.get("on_off")
     value = data.get("value")
-    value = int(value)  # Chuyển đổi về kiểu số nguyên nếu có giá trị
-    value= device_id*1000+ value
+      # Chuyển đổi về kiểu số nguyên nếu có giá trị
+    
     pinned = data.get("pinned")
-    user_id = data.get("user_id")
+    id = data.get("id")
 
     if not on_off and not value:
         return JsonResponse({"message": "on_off or level is required"}, status=400)
@@ -170,7 +172,7 @@ def postDeviceData(request):
     except models.Device.DoesNotExist:
         return JsonResponse({"message": "Device not found"}, status=404)
     try:
-        user = models.User.objects.get(user_id=user_id)  # Lấy instance của User (nếu có)
+        user = models.User.objects.get(id=id)  # Lấy instance của User (nếu có)
     except models.User.DoesNotExist:
         return JsonResponse({"message": "User not found"}, status=404)
 
@@ -202,6 +204,8 @@ def postDeviceData(request):
 
     #Gửi dữ liệu lên Adafruit IO
     fake_request = request
+    value = int(value)  
+    value= int(device_id)*1000+ value
     value = str(value)
     value = "0"+value
     fake_request._body = json.dumps({"value": value}).encode()
@@ -210,6 +214,52 @@ def postDeviceData(request):
   
 
     return JsonResponse({"message": "Device updated successfully"}, status=200)
+
+
+
+def deleteDevice(request, deviceid):
+    if request.method != "DELETE":
+        return JsonResponse({"message": "Invalid request method"}, status=405)
+
+    try:
+        device_id = deviceid
+        if not device_id:
+            return JsonResponse({"message": "device_id is required"}, status=400)
+
+        # Xóa thiết bị
+        device = models.Device.objects.get(device_id=device_id)
+        device.delete()
+
+        return JsonResponse({"message": "Device deleted successfully"}, status=200)
+    except models.Device.DoesNotExist:
+        return JsonResponse({"message": "Device not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"message": "Error", "error": str(e)}, status=500)
+
+def getCommonValue(request, deviceid):
+    try:
+        device = models.Device.objects.get(device_id=deviceid)
+    except models.Device.DoesNotExist:
+        return JsonResponse({"message": "Device not found"}, status=404)
+
+    most_common = (
+        models.LogDevice.objects
+        .filter(device=device, value__isnull=False)
+        .exclude(value='0')  
+        .values('value')
+        .annotate(count=Count('value'))
+        .order_by('-count')
+        .first()
+    )
+
+    if not most_common:
+        return JsonResponse({"message": "No valid logged values found for this device"}, status=404)
+
+    return JsonResponse({
+        "device_id": deviceid,
+        "most_frequent_value": most_common['value'],
+        "count": most_common['count']
+    })
 
 def getNumberOfDevices(request,houseid):
     if request.method != "GET":
@@ -330,3 +380,106 @@ def run_sensor_log(request):
  
 
     return JsonResponse({"message": "Task scheduled to run every 1 minute"})
+
+
+#get Electricity
+
+def getElectricity(request):
+    if request.method != "GET":
+        return JsonResponse({"message": "Invalid request method"}, status=405)
+
+    try:
+        body = json.loads(request.body)
+        device_ids = body.get("device_id", [])
+        start_time_str = body.get("start_time")
+        end_time_str = body.get("end_time")
+        
+        if not device_ids or not start_time_str or not end_time_str:
+            return JsonResponse({"message": "Missing required parameters"}, status=400)
+        
+        if not isinstance(device_ids, list):
+            device_ids = [device_ids]
+        
+        # Cải thiện việc xử lý chuỗi thời gian
+        try:
+            # Thêm 'T' thay thế khoảng trắng để phù hợp với định dạng ISO
+            if ' ' in start_time_str:
+                start_time_str = start_time_str.replace(' ', 'T')
+            if ' ' in end_time_str:
+                end_time_str = end_time_str.replace(' ', 'T')
+                
+            # Parse datetime từ chuỗi
+            start_time = datetime.datetime.fromisoformat(start_time_str)
+            end_time = datetime.datetime.fromisoformat(end_time_str)
+            
+            # Chuyển đổi timezone để đảm bảo datetime luôn có timezone
+            # Phải dùng UTC vì dữ liệu từ PostgreSQL luôn là timezone-aware
+            if timezone.is_naive(start_time):
+                print("start_time is naive")
+                start_time = timezone.make_aware(start_time, timezone=timezone.utc)
+            if timezone.is_naive(end_time):
+                print("end_time is naive")
+                end_time = timezone.make_aware(end_time, timezone=timezone.utc)
+                
+        except ValueError as e:
+            return JsonResponse({"message": f"Invalid datetime format: {str(e)}"}, status=400)
+        
+        WATTAGE = 100
+        results = []
+        
+        for device_id in device_ids:
+            try:
+                device = models.Device.objects.get(device_id=device_id)
+            except models.Device.DoesNotExist:
+                results.append({
+                    "device_id": device_id,
+                    "error": "Device not found",
+                    "watt_hours": 0,
+                    "total_hours": 0
+                })
+                continue
+                
+            logs = models.LogDevice.objects.filter(
+                device=device, 
+                time__range=(start_time, end_time)
+            ).order_by('time')
+            
+            previous_log = models.LogDevice.objects.filter(
+                device=device,
+                time__lt=start_time
+            ).order_by('-time').first()
+            
+            total_seconds = 0
+            device_on = previous_log.on_off if previous_log else False
+            last_state_change = start_time
+            
+            for log in logs:
+                if device_on:
+                    # Cả hai datetime đều phải timezone-aware khi trừ nhau
+                    duration = (log.time - last_state_change).total_seconds()
+                    total_seconds += duration
+                
+                device_on = log.on_off
+                last_state_change = log.time
+            
+            if device_on:
+                duration = (end_time - last_state_change).total_seconds()
+                total_seconds += duration
+            
+            total_hours = total_seconds / 3600
+            watt_hours = total_hours * WATTAGE
+            
+            results.append({
+                "device_id": device_id,
+                "total_hours": round(total_hours, 2),
+                "watt_hours": round(watt_hours, 2)
+            })
+        
+        return JsonResponse({
+            "status": "success",
+            "data": results
+        })
+    
+    except Exception as e:
+        return JsonResponse({"message": f"Error: {str(e)}"}, status=500)
+  
