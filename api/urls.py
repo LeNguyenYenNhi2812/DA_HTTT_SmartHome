@@ -6,7 +6,7 @@ urlpatterns = [
    # path('humidity', views.humidityData, name='humidityData'),
    # path('device/<str:type>', views.deviceData, name='deviceData'),
    # path('sensor/<str:type>', views.sensorData, name='sensorData'),
-   path('sensorData/<int:roomid>', views.getRoomSensorData, name='getRoomSensorData'),
+   path('getRoomSensorData/<int:roomid>', views.getRoomSensorData, name='getRoomSensorData'),
    path('sensorDataTime/<int:roomid>', views.getRoomSensorDataTime, name='getRoomSensorDataTime'),
    path('createDevice', views.createDevice, name='createDevice'),
    path('postDeviceData', views.postDeviceData, name='postDeviceData'),
@@ -18,6 +18,7 @@ urlpatterns = [
    path("getAllDevices/<int:houseid>", views.getAllDevices, name="getAllDevices"),
    path('getNumberDevicesInRoom/<int:roomid>', views.getNumberDevicesInRoom, name='getNumberDevicesInRoom'),
    path('getElectricity', views.getElectricity, name='getElectricity'),
-   
+   path('createHouse', views.createHouse, name='createHouse'),
+   path('createRoom', views.createRoom, name='createRoom'),
 
 ]

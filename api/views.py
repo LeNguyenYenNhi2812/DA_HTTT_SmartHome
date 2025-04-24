@@ -71,6 +71,9 @@ def getRoomSensorData(request,roomid):
             "sensor_id": sensor.sensor_id,
             "name": sensor.name,
             "value": sensor.value,
+            "type": sensor.type,
+            "location": sensor.location,
+            "room_id": sensor.room_id,
             # Thêm các trường khác nếu cần
         })
     return JsonResponse(sensorData, safe=False)
@@ -400,86 +403,51 @@ def getElectricity(request):
         if not isinstance(device_ids, list):
             device_ids = [device_ids]
         
-        # Cải thiện việc xử lý chuỗi thời gian
-        try:
-            # Thêm 'T' thay thế khoảng trắng để phù hợp với định dạng ISO
-            if ' ' in start_time_str:
-                start_time_str = start_time_str.replace(' ', 'T')
-            if ' ' in end_time_str:
-                end_time_str = end_time_str.replace(' ', 'T')
-                
-            # Parse datetime từ chuỗi
-            start_time = datetime.datetime.fromisoformat(start_time_str)
-            end_time = datetime.datetime.fromisoformat(end_time_str)
-            
-            # Chuyển đổi timezone để đảm bảo datetime luôn có timezone
-            # Phải dùng UTC vì dữ liệu từ PostgreSQL luôn là timezone-aware
-            if timezone.is_naive(start_time):
-                print("start_time is naive")
-                start_time = timezone.make_aware(start_time, timezone=timezone.utc)
-            if timezone.is_naive(end_time):
-                print("end_time is naive")
-                end_time = timezone.make_aware(end_time, timezone=timezone.utc)
-                
-        except ValueError as e:
-            return JsonResponse({"message": f"Invalid datetime format: {str(e)}"}, status=400)
         
-        WATTAGE = 100
-        results = []
-        
-        for device_id in device_ids:
-            try:
-                device = models.Device.objects.get(device_id=device_id)
-            except models.Device.DoesNotExist:
-                results.append({
-                    "device_id": device_id,
-                    "error": "Device not found",
-                    "watt_hours": 0,
-                    "total_hours": 0
-                })
-                continue
-                
-            logs = models.LogDevice.objects.filter(
-                device=device, 
-                time__range=(start_time, end_time)
-            ).order_by('time')
-            
-            previous_log = models.LogDevice.objects.filter(
-                device=device,
-                time__lt=start_time
-            ).order_by('-time').first()
-            
-            total_seconds = 0
-            device_on = previous_log.on_off if previous_log else False
-            last_state_change = start_time
-            
-            for log in logs:
-                if device_on:
-                    # Cả hai datetime đều phải timezone-aware khi trừ nhau
-                    duration = (log.time - last_state_change).total_seconds()
-                    total_seconds += duration
-                
-                device_on = log.on_off
-                last_state_change = log.time
-            
-            if device_on:
-                duration = (end_time - last_state_change).total_seconds()
-                total_seconds += duration
-            
-            total_hours = total_seconds / 3600
-            watt_hours = total_hours * WATTAGE
-            
-            results.append({
-                "device_id": device_id,
-                "total_hours": round(total_hours, 2),
-                "watt_hours": round(watt_hours, 2)
-            })
-        
-        return JsonResponse({
-            "status": "success",
-            "data": results
-        })
     
     except Exception as e:
         return JsonResponse({"message": f"Error: {str(e)}"}, status=500)
   
+
+  #house room
+def createHouse(request):
+    if request.method != "POST":
+        return JsonResponse({"message": "Invalid request method"}, status=405)
+
+    data = json.loads(request.body)
+    
+    location = data.get("location")
+    admin_id = data.get("user_id")
+
+    if  not location or not admin_id:
+        return JsonResponse({"message": "location and user_id are required"}, status=400)
+
+    
+    house = models.House.objects.create(
+        location=location,
+        admin_id=admin_id, 
+    )
+
+    return JsonResponse({"message": "House created successfully", "house_id": house.house_id}, status=201)
+
+def createRoom(request):
+    if request.method != "POST":
+        return JsonResponse({"message": "Invalid request method"}, status=405)
+
+    data = json.loads(request.body)
+    
+    name = data.get("name")
+    house_id = data.get("house_id")
+    # level = data.get("level")
+
+    if not name or not house_id:
+        return JsonResponse({"message": "name and house_id are required"}, status=400)
+
+    
+    room = models.Room.objects.create(
+        name=name,
+        house_id=house_id
+        # level=level
+    )
+
+    return JsonResponse({"message": "Room created successfully", "room_id": room.room_id}, status=201)

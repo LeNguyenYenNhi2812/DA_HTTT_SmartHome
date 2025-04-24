@@ -8,7 +8,7 @@ from rest_framework.permissions import AllowAny
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 
-from api.models import User  # Import model User từ api
+from api.models import User,House,HouseMember  # Import model User từ api
 from .serializers import UserRegistrationSerializer
 from django.contrib.auth import authenticate # type: ignore
 from rest_framework import status  # type: ignore # Import status để sử dụng các mã trạng thái HTTP
@@ -76,7 +76,7 @@ class LoginView(APIView):
             })
         else:
             return JsonResponse({"message": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
-
+    
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
     
@@ -89,3 +89,23 @@ class LogoutView(APIView):
             return JsonResponse({"message": "Logged out successfully"}, status=status.HTTP_205_RESET_CONTENT)
         except Exception as e:
             return JsonResponse({"message": "Invalid refresh token", "error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+class ProfileView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        #lấy house_id của người đó
+        admin_house = House.objects.filter(admin=user).values_list('house_id', flat=True)
+        member_house = HouseMember.objects.filter(user=user).values_list('house_id', flat=True)
+        return JsonResponse({
+            "username": user.username,
+            "email": user.email,
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+            "phone": user.phone,
+            "address": user.address,
+            "ssn": user.ssn,
+            "role": user.role,
+            "admin_house": list(admin_house),
+            "member_house": list(member_house),
+        })
