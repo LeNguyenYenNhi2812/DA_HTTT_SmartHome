@@ -41,6 +41,9 @@ class Room(models.Model):
     house = models.ForeignKey(House, on_delete=models.CASCADE)
     level = models.IntegerField(null=True, blank=True) #note: ch bik
 
+    def __str__(self):
+        return f"Room {self.room_id}: {self.name} (House: {self.house_id})"
+
 class Device(models.Model):
     device_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)
@@ -52,7 +55,9 @@ class Device(models.Model):
     pinned = models.BooleanField(default=False)  # Thêm trường pinned vào model Device
     date_created = models.DateTimeField(auto_now_add=True)  # Thêm trường date_created vào model Device
     id = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)  
-
+    
+    def __str__(self):
+        return f"Device {self.device_id}: {self.name} ({self.type}) in Room {self.room.name}"
 class Sensor(models.Model):
     sensor_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)
@@ -91,18 +96,20 @@ class PlanDevice(models.Model):
     plan = models.ForeignKey('Plan', on_delete=models.CASCADE)
     device = models.ForeignKey(Device, on_delete=models.CASCADE)
     added_at = models.DateTimeField(auto_now_add=True)
+    on_off = models.BooleanField(null=True, blank=True)
 
 class PlanSensor(models.Model):
     plan_sensor_id = models.AutoField(primary_key=True)
     plan = models.ForeignKey('Plan', on_delete=models.CASCADE)
     sensor = models.ForeignKey(Sensor, on_delete=models.CASCADE)
     added_at = models.DateTimeField(auto_now_add=True)
-
+    sign = models.CharField(max_length=10, null=True, blank=True)
+    threshold = models.FloatField(null=True, blank=True)
+    
 class Plan(models.Model):
     plan_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)
     and_or = models.CharField(max_length=10, choices=[('AND', 'And'), ('OR', 'Or')])
     devices = models.ManyToManyField(Device, through='PlanDevice')
     sensors = models.ManyToManyField(Sensor, through='PlanSensor')
-    sign = models.CharField(max_length=10, null=True, blank=True)
-    threshold = models.FloatField(null=True, blank=True)
+    

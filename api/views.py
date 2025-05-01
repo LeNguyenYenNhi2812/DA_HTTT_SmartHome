@@ -162,7 +162,7 @@ def postDeviceData(request):
     device_id = data.get("device_id")
     on_off = data.get("on_off")
     value = data.get("value")
-      # Chuyển đổi về kiểu số nguyên nếu có giá trị
+    # Chuyển đổi về kiểu số nguyên nếu có giá trị
     
     pinned = data.get("pinned")
     id = data.get("id")
@@ -214,7 +214,6 @@ def postDeviceData(request):
     fake_request._body = json.dumps({"value": value}).encode()
     adafruit_response = handleDataPOST(fake_request, url)
 
-  
 
     return JsonResponse({"message": "Device updated successfully"}, status=200)
 

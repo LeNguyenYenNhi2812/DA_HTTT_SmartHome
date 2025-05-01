@@ -5,7 +5,7 @@
 
 
 # Active venv:
-.\.env\Scripts\Activate.ps1
+source ./.env/bin/activate
 
 # install 
 pip install django djangorestframework django-cors-headers requests
