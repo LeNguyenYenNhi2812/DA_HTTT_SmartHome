@@ -19,12 +19,10 @@ from django.contrib.auth import authenticate # type: ignore
 import logging
 
 
-
 class get_room_plans(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, house_id):
-        
         rooms = Room.objects.filter(house_id = house_id)
         result = []
 
@@ -43,8 +41,10 @@ class get_room_plans(APIView):
                             "device_id": pd.device.device_id,
                             "name": pd.device.name,
                             "type": pd.device.type,
+                            "brand": pd.device.brand,
                             "value": pd.device.value,
-                            "on_off": pd.device.on_off,
+                            "room": pd.device.room.name,
+                            "on_off": pd.on_off,  # Lấy on_off từ PlanDevice
                             "added_at": pd.added_at.strftime("%Y-%m-%d %H:%M:%S")
                         })
 
@@ -56,6 +56,8 @@ class get_room_plans(APIView):
                             "type": ps.sensor.type,
                             "value": ps.sensor.value,
                             "location": ps.sensor.location,
+                            "sign": ps.sign,  # Thêm trường sign
+                            "threshold": ps.threshold,  # Thêm trường threshold
                             "added_at": ps.added_at.strftime("%Y-%m-%d %H:%M:%S")
                         })
 
@@ -65,8 +67,6 @@ class get_room_plans(APIView):
                             "plan_id": plan.plan_id,
                             "name": plan.name,
                             "and_or": plan.and_or,
-                            "sign": plan.sign,
-                            "threshold": plan.threshold,
                             "devices": plan_devices_data,
                             "sensors": plan_sensors_data
                         })
@@ -104,7 +104,10 @@ class create_plan(APIView):
             if 'devices' in data and data['devices']:
                 for device_id in data['devices']:
                     try:
-                        device = Device.objects.get(device_id=device_id)
+                        device = Device.objects.get(
+                            device_id=device_id,
+                            room__house_id=house_id
+                        )
                         PlanDevice.objects.create(
                             plan=plan,
                             device=device
@@ -119,7 +122,10 @@ class create_plan(APIView):
             if 'sensors' in data and data['sensors']:
                 for sensor_data in data['sensors']:
                     try:
-                        sensor = Sensor.objects.get(sensor_id=sensor_data['sensor_id'])
+                        sensor = Sensor.objects.get(
+                            sensor_id=sensor_data['sensor_id'],
+                            room__house_id=house_id
+                        )
                         PlanSensor.objects.create(
                             plan=plan,
                             sensor=sensor,
@@ -141,3 +147,104 @@ class create_plan(APIView):
                 {"error": "Internal server error", "details": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+class delete_plan(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, plan_id):
+        try:
+            plan = Plan.objects.get(plan_id=plan_id)
+            plan.delete()
+            return Response(
+                {"message": "Plan deleted successfully"},
+                status=status.HTTP_200_OK
+            )
+        except Plan.DoesNotExist:
+            return Response(
+                {"error": f"Plan with id {plan_id} not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {"error": "Internal server error", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+class edit_plan(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CreatePlanSerializer
+
+    def put(self, request, plan_id):
+        try:
+            # Validate input data
+            serializer = CreatePlanSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(
+                    serializer.errors,
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Get and update plan
+            try:
+                plan = Plan.objects.get(plan_id=plan_id)
+            except Plan.DoesNotExist:
+                return Response(
+                    {"error": f"Plan with id {plan_id} not found"},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            data = serializer.validated_data
+            
+            # Update basic plan info
+            plan.name = data['name']
+            plan.and_or = data['and_or']
+            plan.save()
+
+            # Delete existing relationships
+            PlanDevice.objects.filter(plan=plan).delete()
+            PlanSensor.objects.filter(plan=plan).delete()
+
+            # Create new device relationships
+            if 'devices' in data and data['devices']:
+                for device_id in data['devices']:
+                    try:
+                        device = Device.objects.get(device_id=device_id)
+                        PlanDevice.objects.create(
+                            plan=plan,
+                            device=device
+                        )
+                    except Device.DoesNotExist:
+                        plan.delete()
+                        return Response(
+                            {"error": f"Device with id {device_id} not found"},
+                            status=status.HTTP_404_NOT_FOUND
+                        )
+
+            # Create new sensor relationships
+            if 'sensors' in data and data['sensors']:
+                for sensor_data in data['sensors']:
+                    try:
+                        sensor = Sensor.objects.get(sensor_id=sensor_data['sensor_id'])
+                        PlanSensor.objects.create(
+                            plan=plan,
+                            sensor=sensor,
+                            sign=sensor_data['sign'],
+                            threshold=sensor_data['threshold']
+                        )
+                    except Sensor.DoesNotExist:
+                        plan.delete()
+                        return Response(
+                            {"error": f"Sensor with id {sensor_data['sensor_id']} not found"},
+                            status=status.HTTP_404_NOT_FOUND
+                        )
+
+            # Return updated plan
+            response_serializer = PlanResponseSerializer(plan)
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {"error": "Internal server error", "details": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            

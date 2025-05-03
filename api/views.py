@@ -406,9 +406,9 @@ def getElectricity(request):
     
     except Exception as e:
         return JsonResponse({"message": f"Error: {str(e)}"}, status=500)
-  
 
-  #house room
+
+    #house room
 def createHouse(request):
     if request.method != "POST":
         return JsonResponse({"message": "Invalid request method"}, status=405)
