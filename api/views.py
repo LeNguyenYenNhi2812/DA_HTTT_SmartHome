@@ -13,6 +13,9 @@ from django_celery_beat.models import PeriodicTask, IntervalSchedule # type: ign
 import json
 from django.views.decorators.csrf import csrf_exempt # type: ignore
 from django.utils.dateparse import parse_datetime # type: ignore
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
+
 # Create your views here.
 env_values = dotenv_values(".pas")  # Chỉ định đường dẫn file
 
@@ -54,6 +57,8 @@ def handleDataPOST(request,url):
 
 
 #Sensors Endpoints  
+@api_view(['GET'])  # hoặc GET/DELETE tùy API của bạn
+@permission_classes([IsAuthenticated])
 def getRoomSensorData(request,roomid):
     # return JsonResponse({"message": "Invalid request method"}, status=405)
     if request.method != "GET":
@@ -78,6 +83,8 @@ def getRoomSensorData(request,roomid):
         })
     return JsonResponse(sensorData, safe=False)
 
+@api_view(['GET'])  # hoặc GET/DELETE tùy API của bạn
+@permission_classes([IsAuthenticated])
 def getRoomSensorDataTime(request,roomid):
     # return JsonResponse({"message": "Invalid request method"}, status=405)
     if request.method != "GET":
@@ -113,6 +120,10 @@ def getRoomSensorDataTime(request,roomid):
     except json.JSONDecodeError:
         return JsonResponse({"message": "Invalid JSON format"}, status=400)
 # Create Device
+
+
+@api_view(['POST'])  # hoặc GET/DELETE tùy API của bạn
+@permission_classes([IsAuthenticated])
 def createDevice(request):
     if request.method != "POST":
         return JsonResponse({"message": "Invalid request method"}, status=405)
@@ -154,6 +165,8 @@ def createDevice(request):
     )
 
     return JsonResponse({"message": "Device created successfully", "device_id": device.device_id}, status=201)
+@api_view(['POST'])  # hoặc GET/DELETE tùy API của bạn
+@permission_classes([IsAuthenticated])
 def postDeviceData(request):
     if request.method != "POST":
         return JsonResponse({"message": "Invalid request method"}, status=405)
@@ -219,7 +232,8 @@ def postDeviceData(request):
     return JsonResponse({"message": "Device updated successfully"}, status=200)
 
 
-
+@api_view(['DELETE'])  # hoặc GET/DELETE tùy API của bạn
+@permission_classes([IsAuthenticated])
 def deleteDevice(request, deviceid):
     if request.method != "DELETE":
         return JsonResponse({"message": "Invalid request method"}, status=405)
@@ -239,6 +253,8 @@ def deleteDevice(request, deviceid):
     except Exception as e:
         return JsonResponse({"message": "Error", "error": str(e)}, status=500)
 
+@api_view(['GET'])  # hoặc GET/DELETE tùy API của bạn
+@permission_classes([IsAuthenticated])
 def getCommonValue(request, deviceid):
     try:
         device = models.Device.objects.get(device_id=deviceid)
@@ -264,6 +280,8 @@ def getCommonValue(request, deviceid):
         "count": most_common['count']
     })
 
+@api_view(['GET'])  # hoặc GET/DELETE tùy API của bạn
+@permission_classes([IsAuthenticated])
 def getNumberOfDevices(request,houseid):
     if request.method != "GET":
         return JsonResponse({"message": "Invalid request method"}, status=405)
@@ -287,7 +305,8 @@ def getNumberOfDevices(request,houseid):
         return JsonResponse({"message": "Error", "error": str(e)}, status=500)
 
     
-    
+@api_view(['GET'])  # hoặc GET/DELETE tùy API của bạn
+@permission_classes([IsAuthenticated])
 def getAllDevices(request, houseid):
     if request.method != "GET":
         return JsonResponse({"message": "Invalid request method"}, status=405)
@@ -325,7 +344,8 @@ def getAllDevices(request, houseid):
     
     except Exception as e:
         return JsonResponse({"message": "Error", "error": str(e)}, status=500)
-
+@api_view(['GET'])  # hoặc GET/DELETE tùy API của bạn
+@permission_classes([IsAuthenticated])
 def getNumberDevicesInRoom(request, roomid):
     if request.method != "GET":
         return JsonResponse({"message": "Invalid request method"}, status=405)
@@ -343,9 +363,37 @@ def getNumberDevicesInRoom(request, roomid):
         return JsonResponse({"device_count": device_count}, status=200)
     except Exception as e:
         return JsonResponse({"message": "Error", "error": str(e)}, status=500)
+@api_view(['GET'])  # hoặc GET/DELETE tùy API của bạn
+@permission_classes([IsAuthenticated])
+def getLogDevice(request, deviceid):
+    if request.method != "GET":
+        return JsonResponse({"message": "Invalid request method"}, status=405)
 
+    try:
+        device_id = deviceid
+
+        if not device_id:
+            return JsonResponse({"message": "device_id is required"}, status=400)
+
+        # Lấy tất cả LogDevice thuộc Device
+        logs = models.LogDevice.objects.filter(device_id=device_id).order_by('-time')
+        log_data = [
+            {
+                "log_id": log.log_device_id,
+                "time": log.time,
+                "action": log.action,
+                "on_off": log.on_off,
+                "value": log.value,
+            }
+            for log in logs
+        ]
+
+        return JsonResponse(log_data, safe=False)
+    except Exception as e:
+        return JsonResponse({"message": "Error", "error": str(e)}, status=500)
 
 # thêm sénor
+
 def createSensor(request):
     if request.method != "POST":
         return JsonResponse({"message": "Invalid request method"}, status=405)
@@ -405,7 +453,8 @@ def postDataInLogSensor(request):
     return JsonResponse({"message": "Log created successfully"}, status=201)
 
 #get Electricity
-
+@api_view(['GET'])  # hoặc GET/DELETE tùy API của bạn
+@permission_classes([IsAuthenticated])
 def getElectricity(request):
     if request.method != "GET":
         return JsonResponse({"message": "Invalid request method"}, status=405)
@@ -429,6 +478,8 @@ def getElectricity(request):
   
 
   #house room
+@api_view(['GET'])  # hoặc GET/DELETE tùy API của bạn
+@permission_classes([IsAuthenticated])
 def createHouse(request):
     if request.method != "POST":
         return JsonResponse({"message": "Invalid request method"}, status=405)
@@ -448,7 +499,8 @@ def createHouse(request):
     )
 
     return JsonResponse({"message": "House created successfully", "house_id": house.house_id}, status=201)
-
+@api_view(['POST'])  # hoặc GET/DELETE tùy API của bạn
+@permission_classes([IsAuthenticated])
 def createRoom(request):
     if request.method != "POST":
         return JsonResponse({"message": "Invalid request method"}, status=405)
