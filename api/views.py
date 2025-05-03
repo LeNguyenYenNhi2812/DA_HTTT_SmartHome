@@ -385,6 +385,25 @@ def run_sensor_log(request):
     return JsonResponse({"message": "Task scheduled to run every 1 minute"})
 
 
+
+def postDataInLogSensor(request):
+    if request.method != "POST":
+        return JsonResponse({"message": "Invalid request method"}, status=405)
+    data = json.loads(request.body)
+    time = data.get("time")
+    action = data.get("action")
+    value = data.get("value")
+    sensor_id = data.get("sensor_id")
+    if not time or not action or not value or not sensor_id:
+        return JsonResponse({"message": "time, action, value, and sensor_id are required"}, status=400)
+    models.LogSensor.objects.create(
+        time=time,
+        action=action,
+        value=value,
+        sensor_id=sensor_id
+    )
+    return JsonResponse({"message": "Log created successfully"}, status=201)
+
 #get Electricity
 
 def getElectricity(request):
@@ -417,10 +436,10 @@ def createHouse(request):
     data = json.loads(request.body)
     
     location = data.get("location")
-    admin_id = data.get("user_id")
+    admin_id = data.get("id")
 
     if  not location or not admin_id:
-        return JsonResponse({"message": "location and user_id are required"}, status=400)
+        return JsonResponse({"message": "location and id are required"}, status=400)
 
     
     house = models.House.objects.create(

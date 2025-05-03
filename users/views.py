@@ -98,6 +98,7 @@ class ProfileView(APIView):
         admin_house = House.objects.filter(admin=user).values_list('house_id', flat=True)
         member_house = HouseMember.objects.filter(user=user).values_list('house_id', flat=True)
         return JsonResponse({
+            "id": user.id,
             "username": user.username,
             "email": user.email,
             "first_name": user.first_name,

@@ -20,5 +20,6 @@ urlpatterns = [
    path('getElectricity', views.getElectricity, name='getElectricity'),
    path('createHouse', views.createHouse, name='createHouse'),
    path('createRoom', views.createRoom, name='createRoom'),
+   path('postDataInLogSensor', views.postDataInLogSensor, name='postDataInLogSensor'),
 
 ]
