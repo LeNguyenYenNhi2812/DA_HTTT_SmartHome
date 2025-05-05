@@ -55,8 +55,10 @@ class PlanResponseSerializer(serializers.Serializer):
             "device_id": pd.device.device_id,
             "name": pd.device.name,
             "type": pd.device.type,
-            "value": pd.device.value,
-            "on_off": pd.device.on_off,
+            "brand": pd.device.brand,
+            "value": pd.value,
+            "room": pd.device.room.name,
+            "on_off": pd.on_off,
             "added_at": pd.added_at.strftime("%Y-%m-%d %H:%M:%S")
         } for pd in plan_devices]
 
@@ -71,3 +73,19 @@ class PlanResponseSerializer(serializers.Serializer):
             "threshold": ps.threshold,
             "added_at": ps.added_at.strftime("%Y-%m-%d %H:%M:%S")
         } for ps in plan_sensors]
+        
+class DeviceRequestSerializer(serializers.Serializer):
+    device_id = serializers.IntegerField()
+    value = serializers.IntegerField(required=True, allow_null=True)
+    on_off = serializers.BooleanField(required=True, allow_null=True)
+
+class SensorRequestSerializer(serializers.Serializer):
+    sensor_id = serializers.IntegerField()
+    sign = serializers.CharField(max_length=10)
+    threshold = serializers.FloatField()
+
+class CreatePlanSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=100)
+    and_or = serializers.ChoiceField(choices=['AND', 'OR'])
+    devices = DeviceRequestSerializer(many=True)
+    sensors = SensorRequestSerializer(many=True)
