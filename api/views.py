@@ -220,10 +220,10 @@ def postDeviceData(request):
 
     #Gửi dữ liệu lên Adafruit IO
     fake_request = request
-    value = int(value)  
-    value= int(device_id)*1000+ value
-    value = str(value)
-    value = "0"+value
+    # value = int(value)  
+    # value= int(device_id)*1000+ value
+    # value = str(value)
+    # value = "0"+value
     fake_request._body = json.dumps({"value": value}).encode()
     adafruit_response = handleDataPOST(fake_request, url)
 
