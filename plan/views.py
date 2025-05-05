@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from api import models
+from django.db import transaction
 
 
 from django.views.decorators.csrf import csrf_exempt
@@ -18,142 +19,150 @@ from api.models import Room, Device, PlanDevice, PlanSensor, Plan, Sensor, House
 from django.contrib.auth import authenticate # type: ignore
 import logging
 
-
 class get_room_plans(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, house_id):
-        house = House.objects.filter(house_id=house_id, admin=request.user).first()
-        if not house:
-            return Response(
-                {"error": "You don't have permission to view plans for this house"},
-                status=status.HTTP_403_FORBIDDEN
-            )
+        # Kiểm tra quyền truy cập
+        # house = House.objects.filter(house_id=house_id, admin=request.user).exists()
+        # if not house:
+        #     return Response(
+        #         {"error": "You don't have permission to view plans for this house"},
+        #         status=status.HTTP_403_FORBIDDEN
+        #     )
 
-        rooms = Room.objects.filter(house_id = house_id)
+        # Sử dụng select_related và prefetch_related để giảm số truy vấn
+        rooms = Room.objects.filter(house_id=house_id).prefetch_related(
+            'device_set',  # Prefetch devices
+            'device_set__plandevice_set',  # Prefetch plan devices
+            'device_set__plandevice_set__plan',  # Prefetch plans
+            'device_set__plandevice_set__plan__plansensor_set',  # Prefetch plan sensors
+            'device_set__plandevice_set__plan__plansensor_set__sensor',  # Prefetch sensors
+        )
+
         result = []
+        seen_plan_ids = set()  # Theo dõi các plan_id đã xử lý
 
         for room in rooms:
-            devices = Device.objects.filter(room=room)
-            
             plans_data = []
-            for device in devices:
-                plan_devices = PlanDevice.objects.filter(device=device)
-                for plan_device in plan_devices:
+            
+            # Lấy tất cả device và plan liên quan trong 1 lần query
+            for device in room.device_set.all():
+                for plan_device in device.plandevice_set.all():
                     plan = plan_device.plan
                     
-                    plan_devices_data = []
-                    for pd in PlanDevice.objects.filter(plan=plan):
-                        plan_devices_data.append({
-                            "device_id": pd.device.device_id,
-                            "name": pd.device.name,
-                            "type": pd.device.type,
-                            "brand": pd.device.brand,
-                            "value": pd.value,
-                            "room": pd.device.room.name,
-                            "on_off": pd.on_off,  
-                            "added_at": pd.added_at.strftime("%Y-%m-%d %H:%M:%S")
-                        })
+                    # Bỏ qua nếu plan đã được xử lý
+                    if plan.plan_id in seen_plan_ids:
+                        continue
+                    seen_plan_ids.add(plan.plan_id)
 
-                    plan_sensors_data = []
-                    for ps in PlanSensor.objects.filter(plan=plan):
-                        plan_sensors_data.append({
-                            "sensor_id": ps.sensor.sensor_id,
-                            "name": ps.sensor.name,
-                            "type": ps.sensor.type,
-                            "value": ps.sensor.value,
-                            "location": ps.sensor.location,
-                            "sign": ps.sign, 
-                            "threshold": ps.threshold,  
-                            "added_at": ps.added_at.strftime("%Y-%m-%d %H:%M:%S")
-                        })
+                    # Lấy devices data
+                    plan_devices_data = [{
+                        "device_id": pd.device.device_id,
+                        "name": pd.device.name,
+                        "type": pd.device.type,
+                        "brand": pd.device.brand,
+                        "value": pd.value,
+                        "room": pd.device.room.name,
+                        "on_off": pd.on_off,
+                        "added_at": pd.added_at.strftime("%Y-%m-%d %H:%M:%S")
+                    } for pd in plan.plandevice_set.all()]
 
-                    plan_exists = any(p["plan_id"] == plan.plan_id for p in plans_data)
-                    if not plan_exists:
-                        plans_data.append({
-                            "plan_id": plan.plan_id,
-                            "name": plan.name,
-                            "and_or": plan.and_or,
-                            "devices": plan_devices_data,
-                            "sensors": plan_sensors_data
-                        })
+                    # Lấy sensors data
+                    plan_sensors_data = [{
+                        "sensor_id": ps.sensor.sensor_id,
+                        "name": ps.sensor.name,
+                        "type": ps.sensor.type,
+                        "value": ps.sensor.value,
+                        "location": ps.sensor.location,
+                        "sign": ps.sign,
+                        "threshold": ps.threshold,
+                        "added_at": ps.added_at.strftime("%Y-%m-%d %H:%M:%S")
+                    } for ps in plan.plansensor_set.all()]
 
-            room_data = {
+                    plans_data.append({
+                        "plan_id": plan.plan_id,
+                        "name": plan.name,
+                        "and_or": plan.and_or,
+                        "devices": plan_devices_data,
+                        "sensors": plan_sensors_data
+                    })
+
+            result.append({
                 "room_id": room.room_id,
                 "room_name": room.name,
                 "plans": plans_data
-            }
-            result.append(room_data)
+            })
 
         return JsonResponse(result, safe=False)
     
-
 class create_plan(APIView):
     permission_classes = [IsAuthenticated]
     serializer_class = CreatePlanSerializer
 
     def post(self, request, house_id):
         try:
-            house = House.objects.filter(house_id=house_id, admin=request.user).first()
-            if not house:
+            # Kiểm tra quyền trong một query
+            if not House.objects.filter(house_id=house_id, admin=request.user).exists():
                 return Response(
                     {"error": "You don't have permission to create plan for this house"},
                     status=status.HTTP_403_FORBIDDEN
                 )
+
             serializer = CreatePlanSerializer(data=request.data)
             if not serializer.is_valid():
-                return Response(
-                    serializer.errors,
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-                
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            
             data = serializer.validated_data
-                    
-            plan = Plan.objects.create(
-                name=data['name'],
-                and_or=data['and_or']
-            )
 
-            if 'devices' in data and data['devices']:
-                for device_data in data['devices']:
-                    try:
-                        device = Device.objects.get(
-                            device_id=device_data['device_id'],
+            # Tạo plan trong transaction để đảm bảo tính nhất quán
+            with transaction.atomic():
+                plan = Plan.objects.create(
+                    name=data['name'],
+                    and_or=data['and_or']
+                )
+
+                # Lấy tất cả devices cần thiết trong một query
+                if 'devices' in data and data['devices']:
+                    device_ids = [d['device_id'] for d in data['devices']]
+                    devices = {
+                        d.device_id: d for d in Device.objects.filter(
+                            device_id__in=device_ids,
                             room__house_id=house_id
                         )
-                        PlanDevice.objects.create(
-                            plan=plan,
-                            device=device,
-                            value=device_data.get('value', None),
-                            on_off=device_data.get('on_off', None)
-                        )
-                    except Device.DoesNotExist:
-                        plan.delete()
-                        return Response(
-                            {"error": f"Device with id {device_data['device_id']} not found"}, 
-                            status=status.HTTP_404_NOT_FOUND
-                        )
+                    }
 
-            if 'sensors' in data and data['sensors']:
-                for sensor_data in data['sensors']:
-                    try:
-                        sensor = Sensor.objects.get(
-                            sensor_id=sensor_data['sensor_id'],
+                    # Tạo bulk PlanDevice objects
+                    plan_devices = [
+                        PlanDevice(
+                            plan=plan,
+                            device=devices.get(d['device_id']),
+                            value=d.get('value'),
+                            on_off=d.get('on_off')
+                        ) for d in data['devices'] if d['device_id'] in devices
+                    ]
+                    PlanDevice.objects.bulk_create(plan_devices)
+
+                # Tương tự với sensors
+                if 'sensors' in data and data['sensors']:
+                    sensor_ids = [s['sensor_id'] for s in data['sensors']]
+                    sensors = {
+                        s.sensor_id: s for s in Sensor.objects.filter(
+                            sensor_id__in=sensor_ids,
                             room__house_id=house_id
                         )
-                        PlanSensor.objects.create(
+                    }
+
+                    plan_sensors = [
+                        PlanSensor(
                             plan=plan,
-                            sensor=sensor,
-                            sign=sensor_data['sign'],
-                            threshold=sensor_data['threshold']
-                        )
-                    except Sensor.DoesNotExist:
-                        plan.delete()
-                        return Response(
-                            {"error": f"Sensor with id {sensor_data['sensor_id']} not found"}, 
-                            status=status.HTTP_404_NOT_FOUND
-                        )
-                        
+                            sensor=sensors.get(s['sensor_id']),
+                            sign=s['sign'],
+                            threshold=s['threshold']
+                        ) for s in data['sensors'] if s['sensor_id'] in sensors
+                    ]
+                    PlanSensor.objects.bulk_create(plan_sensors)
+
             return Response(status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -161,7 +170,6 @@ class create_plan(APIView):
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
 class delete_plan(APIView):
     permission_classes = [IsAuthenticated]
 
