@@ -231,6 +231,28 @@ def postDeviceData(request):
 
     return JsonResponse({"message": "Device updated successfully"}, status=200)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def renameDevice(request, deviceid):
+    if request.method != "POST":
+        return JsonResponse({"message": "Invalid request method"}, status=405)
+
+    data = json.loads(request.body)
+    new_name = data.get("name")
+
+    if not new_name:
+        return JsonResponse({"message": "New name is required"}, status=400)
+
+    try:
+        device = models.Device.objects.get(device_id=deviceid)  # Lấy instance của Device
+        device.name = new_name
+        device.save()
+        return JsonResponse({"message": "Device renamed successfully"}, status=200)
+    except models.Device.DoesNotExist:
+        return JsonResponse({"message": "Device not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"message": "Error", "error": str(e)}, status=500)
+
 
 @api_view(['DELETE'])  # hoặc GET/DELETE tùy API của bạn
 @permission_classes([IsAuthenticated])

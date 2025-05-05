@@ -85,24 +85,43 @@ class Schedule(models.Model):
     action = models.CharField(max_length=100)
     on_off = models.BooleanField(null=True, blank=True)
     value = models.IntegerField(null=True, blank=True)
-
+         
 class PlanDevice(models.Model):
     plan_device_id = models.AutoField(primary_key=True)
     plan = models.ForeignKey('Plan', on_delete=models.CASCADE)
     device = models.ForeignKey(Device, on_delete=models.CASCADE)
     added_at = models.DateTimeField(auto_now_add=True)
+    on_off = models.BooleanField(null=True, blank=True)
 
+    def __str__(self):
+        return f"PlanDevice {self.plan_device_id}: {self.device.name} " \
+            f"with on_off {self.on_off} for Plan {self.plan.plan_id}"
+            
+            
 class PlanSensor(models.Model):
     plan_sensor_id = models.AutoField(primary_key=True)
     plan = models.ForeignKey('Plan', on_delete=models.CASCADE)
     sensor = models.ForeignKey(Sensor, on_delete=models.CASCADE)
     added_at = models.DateTimeField(auto_now_add=True)
-
+    sign = models.CharField(max_length=10, null=True, blank=True)
+    threshold = models.FloatField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"PlanSensor {self.plan_sensor_id}: {self.sensor.name} " \
+            f"with sign {self.sign} and threshold {self.threshold} " \
+            f"for Plan {self.plan.plan_id}"
+        
 class Plan(models.Model):
     plan_id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=100)
     and_or = models.CharField(max_length=10, choices=[('AND', 'And'), ('OR', 'Or')])
     devices = models.ManyToManyField(Device, through='PlanDevice')
     sensors = models.ManyToManyField(Sensor, through='PlanSensor')
-    sign = models.CharField(max_length=10, null=True, blank=True)
-    threshold = models.FloatField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"Plan {self.plan_id}: {self.name} ({self.and_or}) of "  \
+                f"Devices: {', '.join([str(device) for device in self.devices.all()])} " \
+                f"and Sensors: {', '.join([str(sensor) for sensor in self.sensors.all()])}"
+    
+    
+    

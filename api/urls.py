@@ -22,4 +22,5 @@ urlpatterns = [
    path('createRoom', views.createRoom, name='createRoom'),
    path('postDataInLogSensor', views.postDataInLogSensor, name='postDataInLogSensor'),
    path('getLogDevice/<int:deviceid>', views.getLogDevice, name='getLogDevice'),
+   path('renameDevice/<int:deviceid>', views.renameDevice, name='renameDevice'),
 ]

@@ -110,3 +110,39 @@ class ProfileView(APIView):
             "admin_house": list(admin_house),
             "member_house": list(member_house),
         })
+class ChangeProfile(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        # Lấy dữ liệu từ request
+        first_name = request.data.get("first_name")
+        last_name = request.data.get("last_name")
+        phone = request.data.get("phone")
+        address = request.data.get("address")
+        ssn = request.data.get("ssn")
+
+        # Cập nhật thông tin người dùng
+        user.first_name = first_name
+        user.last_name = last_name
+        user.phone = phone
+        user.address = address
+        user.ssn = ssn
+        user.save()
+
+        return JsonResponse({"message": "Profile updated successfully"}, status=status.HTTP_200_OK)
+class UserToHouse(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, houseid):
+        user = request.user
+        try:
+            house = House.objects.get(house_id=houseid)
+            if house.admin == user:
+                # Nếu người dùng là admin của house, thêm người dùng vào house
+                house_member = HouseMember.objects.create(user=user, house=house)
+                return JsonResponse({"message": "User added to house successfully"}, status=status.HTTP_201_CREATED)
+            else:
+                return JsonResponse({"message": "You are not authorized to add users to this house"}, status=status.HTTP_403_FORBIDDEN)
+        except House.DoesNotExist:
+            return JsonResponse({"message": "House does not exist"}, status=status.HTTP_404_NOT_FOUND)
