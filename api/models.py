@@ -85,15 +85,15 @@ class Schedule(models.Model):
     action = models.CharField(max_length=100)
     on_off = models.BooleanField(null=True, blank=True)
     value = models.CharField(max_length=255, null=True, blank=True)
-
-         
+    
 class PlanDevice(models.Model):
     plan_device_id = models.AutoField(primary_key=True)
     plan = models.ForeignKey('Plan', on_delete=models.CASCADE)
     device = models.ForeignKey(Device, on_delete=models.CASCADE)
     added_at = models.DateTimeField(auto_now_add=True)
     on_off = models.BooleanField(null=True, blank=True)
-
+    value = models.CharField(max_length=50, null=True, blank=True)
+    
     def __str__(self):
         return f"PlanDevice {self.plan_device_id}: {self.device.name} " \
             f"with on_off {self.on_off} for Plan {self.plan.plan_id}"

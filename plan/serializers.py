@@ -6,6 +6,11 @@ class SensorDataSerializer(serializers.Serializer):
     sign = serializers.CharField()
     threshold = serializers.FloatField()
 
+class DeviceDataSerializer(serializers.Serializer):
+    device_id = serializers.IntegerField()
+    on_off = serializers.BooleanField(required=False)
+    value = serializers.CharField(required=False)
+    
 class CreatePlanSerializer(serializers.Serializer):
     name = serializers.CharField(required=True)
     and_or = serializers.ChoiceField(
@@ -13,7 +18,7 @@ class CreatePlanSerializer(serializers.Serializer):
         required=True
     )
     devices = serializers.ListField(
-        child=serializers.IntegerField(),
+        child=DeviceDataSerializer(),
         required=True,
         min_length=1,
         error_messages={
