@@ -671,7 +671,7 @@ def getElectricity(request):
         return JsonResponse({"message": f"Error: {str(e)}"}, status=500)
 
   #house room
-@api_view(['GET'])  # hoặc GET/DELETE tùy API của bạn
+@api_view(['POST'])  # hoặc GET/DELETE tùy API của bạn
 @permission_classes([IsAuthenticated])
 def createHouse(request):
     if request.method != "POST":

@@ -135,14 +135,31 @@ class UserToHouse(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request, houseid):
-        user = request.user
+        admin_user = request.user  # Người đang đăng nhập
+
         try:
             house = House.objects.get(house_id=houseid)
-            if house.admin == user:
-                # Nếu người dùng là admin của house, thêm người dùng vào house
-                house_member = HouseMember.objects.create(user=user, house=house)
-                return JsonResponse({"message": "User added to house successfully"}, status=status.HTTP_201_CREATED)
-            else:
-                return JsonResponse({"message": "You are not authorized to add users to this house"}, status=status.HTTP_403_FORBIDDEN)
         except House.DoesNotExist:
             return JsonResponse({"message": "House does not exist"}, status=status.HTTP_404_NOT_FOUND)
+
+        if house.admin != admin_user:
+            return JsonResponse({"message": "You are not authorized to add users to this house"}, status=status.HTTP_403_FORBIDDEN)
+
+        # Lấy username từ request body (gửi từ FE)
+        username_to_add = request.data.get("username")
+        if not username_to_add:
+            return JsonResponse({"message": "Username is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user_to_add = User.objects.get(username=username_to_add)
+        except User.DoesNotExist:
+            return JsonResponse({"message": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Kiểm tra nếu user đã là thành viên
+        if HouseMember.objects.filter(user=user_to_add, house=house).exists():
+            return JsonResponse({"message": "User is already a member of the house"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Thêm user vào house với vai trò là MEMBER
+        HouseMember.objects.create(user=user_to_add, house=house, role='MEMBER')
+
+        return JsonResponse({"message": f"User '{username_to_add}' added to house successfully"}, status=status.HTTP_201_CREATED)
