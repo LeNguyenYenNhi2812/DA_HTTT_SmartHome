@@ -11,8 +11,8 @@ def fetch_sensor_data():
         "soilhumidity": "smarthome-soilhumidity",
         "pir": "smarthome-pir"
     }
-    sensor_id = 3
-    for sensor_id in range(3,11):
+    sensor_id = 10
+    for sensor_id in range(10,14):
         try:
             sensor = models.Sensor.objects.get(sensor_id=sensor_id)
         except models.Sensor.DoesNotExist:

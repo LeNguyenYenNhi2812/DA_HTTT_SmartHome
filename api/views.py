@@ -659,7 +659,7 @@ def getElectricity(request):
             prev_on = timezone.make_aware(prev_on, timezone=pytz.UTC) if prev_on else None
             if prev_on:
                 total_active_time += end_time - prev_on
-                # print("total_active_time",total_active_time)
+                print("total_active_time",total_active_time)
             result.append({
                 "device_id": device.device_id,
                 "time_consumed_seconds": int(total_active_time.total_seconds())
