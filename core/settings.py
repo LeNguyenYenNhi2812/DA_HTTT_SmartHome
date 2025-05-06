@@ -102,6 +102,9 @@ DATABASES = {
         'PASSWORD': myPASSWORD,
         'HOST': myHOST, 
         'PORT': myPORT,
+        'OPTIONS': {
+            'options':'-c timezone=Asia/Ho_Chi_Minh' 
+        }
     }
 }
 
@@ -135,7 +138,7 @@ TIME_ZONE = 'Asia/Ho_Chi_Minh'
 USE_I18N = True
 
 USE_TZ = False
-
+CORS_ALLOW_ALL_ORIGINS = True  # Cho phép tất cả các nguồn gốc (origins) truy cập vào API của bạn
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/

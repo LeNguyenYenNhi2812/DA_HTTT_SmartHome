@@ -4,7 +4,9 @@ from django.http import HttpResponse,JsonResponse # type: ignore
 from dotenv import dotenv_values # type: ignore
 from django.test import RequestFactory # type: ignore
 from . import task
-from django.utils.timezone import now # type: ignore
+from datetime import datetime
+import pytz
+VN_TZ = pytz.timezone("Asia/Ho_Chi_Minh")
 from . import models
 import datetime
 from django.db.models import Count
@@ -21,6 +23,8 @@ env_values = dotenv_values(".pas")  # Chỉ định đường dẫn file
 
 # Lấy API key từ file
 ADAFRUIT_IO_KEY = env_values.get("ADAFRUIT_IO_KEY")
+
+
 
 # print("API Key Loaded:", ADAFRUIT_IO_KEY)  # Kiểm tra xem API key có được load khôn
 headers = {
@@ -111,7 +115,7 @@ def getRoomSensorDataTime(request,roomid):
                 "sensor_name": log.sensor.name,
                 "type": log.sensor.type,
                 "value": log.value,
-                "time": log.time,
+                "time": log.time.astimezone(VN_TZ).isoformat(),
                 "action": log.action,
 
                 }
@@ -402,7 +406,7 @@ def getLogDevice(request, deviceid):
         log_data = [
             {
                 "log_id": log.log_device_id,
-                "time": log.time,
+                "time": log.time.astimezone(VN_TZ).isoformat(),
                 "action": log.action,
                 "on_off": log.on_off,
                 "value": log.value,
@@ -475,7 +479,34 @@ def postDataInLogSensor(request):
     return JsonResponse({"message": "Log created successfully"}, status=201)
 
 #get Electricity
-@api_view(['GET'])  # hoặc GET/DELETE tùy API của bạn
+# @api_view(['GET'])  # hoặc GET/DELETE tùy API của bạn
+# @permission_classes([IsAuthenticated])
+# def getElectricity(request):
+#     if request.method != "GET":
+#         return JsonResponse({"message": "Invalid request method"}, status=405)
+
+#     try:
+#         body = json.loads(request.body)
+#         device_ids = body.get("device_id", [])
+#         start_time_str = body.get("start_time")
+#         end_time_str = body.get("end_time")
+        
+#         if not device_ids or not start_time_str or not end_time_str:
+#             return JsonResponse({"message": "Missing required parameters"}, status=400)
+        
+#         if not isinstance(device_ids, list):
+#             device_ids = [device_ids]
+        
+        
+    
+#     except Exception as e:
+#         return JsonResponse({"message": f"Error: {str(e)}"}, status=500)
+  
+from django.utils.dateparse import parse_datetime
+from datetime import timedelta
+import pytz
+
+@api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def getElectricity(request):
     if request.method != "GET":
@@ -483,21 +514,63 @@ def getElectricity(request):
 
     try:
         body = json.loads(request.body)
-        device_ids = body.get("device_id", [])
         start_time_str = body.get("start_time")
         end_time_str = body.get("end_time")
-        
-        if not device_ids or not start_time_str or not end_time_str:
+        room_id = body.get("room_id")
+
+        if not all([start_time_str, end_time_str, room_id]):
             return JsonResponse({"message": "Missing required parameters"}, status=400)
-        
-        if not isinstance(device_ids, list):
-            device_ids = [device_ids]
-        
-        
-    
+
+        start_time = parse_datetime(start_time_str)
+        end_time = parse_datetime(end_time_str)
+
+        if not (start_time and end_time):
+            return JsonResponse({"message": "Invalid datetime format"}, status=400)
+
+        # Ensure timezone-aware comparisons
+        if timezone.is_naive(start_time) or timezone.is_naive(end_time):
+            start_time = timezone.make_aware(start_time, timezone=pytz.UTC)
+            end_time = timezone.make_aware(end_time, timezone=pytz.UTC)
+        # print("start_time",start_time)
+        # print("end_time",end_time)
+        print(end_time-start_time)
+        devices = models.Device.objects.filter(room_id=room_id)
+        result = []
+
+        for device in devices:
+            logs = models.LogDevice.objects.filter(
+                device=device,
+                time__range=(start_time, end_time)
+            ).order_by("time")
+            # print("logs",logs)
+            total_active_time = timedelta()
+            prev_on = None
+
+            for log in logs:
+                # print("log",log.time)
+                if log.on_off:
+                    prev_on = log.time
+                    # print("prev_on1",prev_on)
+                elif not log.on_off and prev_on:
+                    # print("prev_on",prev_on)
+                    total_active_time += log.time - prev_on
+                    # print("total_active_time",total_active_time)
+                    prev_on = None
+
+            # If device was still ON at the end of period
+            prev_on = timezone.make_aware(prev_on, timezone=pytz.UTC) if prev_on else None
+            if prev_on:
+                total_active_time += end_time - prev_on
+                # print("total_active_time",total_active_time)
+            result.append({
+                "device_id": device.device_id,
+                "time_consumed_seconds": int(total_active_time.total_seconds())
+            })
+
+        return JsonResponse(result, safe=False)
+
     except Exception as e:
         return JsonResponse({"message": f"Error: {str(e)}"}, status=500)
-  
 
   #house room
 @api_view(['GET'])  # hoặc GET/DELETE tùy API của bạn
