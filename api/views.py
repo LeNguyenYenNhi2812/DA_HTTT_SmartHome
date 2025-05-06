@@ -31,19 +31,20 @@ headers = {
             "Content-Type": "application/json",
             "X-AIO-Key": ADAFRUIT_IO_KEY,
         }  
-def handleDataPOST(request,url):
-    dataJson = json.loads(request.body)
-    feedData = {
-                "value": dataJson["value"]
-                # "feed_id": dataJson["feed_id"],
-                # "feed_key": dataJson["feed_key"]
-            }
-    response = requests.post(url, headers=headers, json=feedData)
+# def handleDataPOST(request,url):
+#     dataJson = json.loads(request.body)
+#     feedData = {
+#                 "value": dataJson["value"]
+#                 # "feed_id": dataJson["feed_id"],
+#                 # "feed_key": dataJson["feed_key"]
+#             }
+#     print("feedData",feedData)
+#     response = requests.post(url, headers=headers, json=feedData)
 
-    if response.status_code == 200 or response.status_code == 201:
-        return JsonResponse({"message": "Success", "status": response.status_code}, safe=False)
-    else:
-        return JsonResponse({"message": "Error", "status": response.status_code, "response": response.text}, safe=False)
+#     if response.status_code == 200 or response.status_code == 201:
+#         return JsonResponse({"message": "Success", "status": response.status_code}, safe=False)
+#     else:
+#         return JsonResponse({"message": "Error", "status": response.status_code, "response": response.text}, safe=False)
 # def handleDataGET(request,url):
 #     response = requests.get(url)
 #     if response.status_code == 200:
@@ -228,10 +229,23 @@ def postDeviceData(request):
     # value= int(device_id)*1000+ value
     # value = str(value)
     # value = "0"+value
-    fake_request._body = json.dumps({"value": value}).encode()
-    adafruit_response = handleDataPOST(fake_request, url)
+    id = value[0]+value[1]
+    print("id",id)
+    if (int(id) %2 ==0):
+        newValue= "00"+value[2:]
+    else:
+        newValue= "01"+value[2:]
 
-  
+    print("newValue",newValue)
+    feedData = {
+                "value": newValue,
+            }
+    
+    repondse=requests.post(url, headers=headers, json=feedData)
+    if repondse.status_code == 200 or repondse.status_code == 201:
+        print("Success")
+    else:
+        print("Error", repondse.text)
 
     return JsonResponse({"message": "Device updated successfully"}, status=200)
 
