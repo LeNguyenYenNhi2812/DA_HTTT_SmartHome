@@ -58,7 +58,7 @@ class Sensor(models.Model):
     name = models.CharField(max_length=100)
     type = models.CharField(max_length=50)
     location = models.CharField(max_length=100, null=True, blank=True)
-    value = models.IntegerField(null=True, blank=True)
+    value = models.CharField(max_length=50, null=True, blank=True)
     room = models.ForeignKey(Room, on_delete=models.CASCADE)
 
 class LogDevice(models.Model):
@@ -74,7 +74,7 @@ class LogSensor(models.Model):
     sensor = models.ForeignKey(Sensor, on_delete=models.CASCADE)
     time = models.DateTimeField(auto_now_add=True)
     action = models.CharField(max_length=100)
-    value = models.IntegerField(null=True, blank=True)
+    value = models.CharField(max_length=50, null=True, blank=True)
 
 class Schedule(models.Model):
     schedule_id = models.AutoField(primary_key=True)
