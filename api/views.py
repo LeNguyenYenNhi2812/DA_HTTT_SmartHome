@@ -124,6 +124,67 @@ def getRoomSensorDataTime(request,roomid):
         return JsonResponse(sensorData, safe=False)
     except json.JSONDecodeError:
         return JsonResponse({"message": "Invalid JSON format"}, status=400)
+    
+
+
+
+from django_celery_beat.models import ClockedSchedule, PeriodicTask
+import uuid
+
+@csrf_exempt
+def scheduleDeviceAction(request):
+    if request.method != "POST":
+        return JsonResponse({"message": "Invalid request method"}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        name = data.get("name")
+        time_str = data.get("time")
+        user_id = data.get("user_id")
+        device_id = data.get("device_id")
+        on_off = data.get("on_off")
+        value = data.get("value")
+
+        if not all([name, time_str, user_id, device_id]):
+            return JsonResponse({"message": "Missing required fields"}, status=400)
+
+        scheduled_time = parse_datetime(time_str)
+    
+
+        if scheduled_time is None:
+            return JsonResponse({"message": "Invalid datetime format"}, status=400)
+
+        # Tạo bản ghi Schedule
+        schedule_obj = models.Schedule.objects.create(
+            name=name,
+            time=scheduled_time,
+            description=data.get("description"),
+            user_id_id=user_id,
+            action="Scheduled Device Update",
+            on_off=on_off,
+            value=value,
+        )
+
+        # Tạo ClockedSchedule cho thời gian cụ thể
+        clocked, _ = ClockedSchedule.objects.get_or_create(clocked_time=scheduled_time)
+
+        PeriodicTask.objects.create(
+            name=f"schedule-{uuid.uuid4()}",
+            task='api.task.execute_scheduled_device',
+            clocked=clocked,
+            one_off=True,
+            args=json.dumps([device_id, on_off, value]),
+        )
+
+        return JsonResponse({"message": "Schedule created successfully", "schedule_id": schedule_obj.schedule_id})
+
+    except Exception as e:
+        return JsonResponse({"message": "Error", "error": str(e)}, status=500)
+
+
+
+
+
 # Create Device
 
 
@@ -540,7 +601,7 @@ def createSensor(request):
 def run_sensor_log(request):
     # Tạo khoảng lặp 1 phút (nếu chưa có)
     schedule, _ = IntervalSchedule.objects.get_or_create(
-        every=10,
+        every=1,
         period=IntervalSchedule.MINUTES,
     )
 

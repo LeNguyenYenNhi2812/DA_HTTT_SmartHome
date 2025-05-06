@@ -43,5 +43,5 @@ urlpatterns = [
                                          cache_timeout=0), name='schema-swagger-ui'),\
 
     path('api/v1/plan/', include('plan.urls')),
-    path('api/v1/schedule/', include('schedule.urls')),
+    # path('api/v1/schedule/', include('schedule.urls')),
 ]

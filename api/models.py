@@ -81,10 +81,11 @@ class Schedule(models.Model):
     name = models.CharField(max_length=100)
     time = models.DateTimeField()
     description = models.TextField(null=True, blank=True)
-    person = models.ForeignKey(User, on_delete=models.CASCADE)
+    user_id = models.ForeignKey(User, on_delete=models.CASCADE)
     action = models.CharField(max_length=100)
     on_off = models.BooleanField(null=True, blank=True)
-    value = models.CharField(max_length=50, null=True, blank=True)
+    value = models.CharField(max_length=255, null=True, blank=True)
+
          
 class PlanDevice(models.Model):
     plan_device_id = models.AutoField(primary_key=True)
