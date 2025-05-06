@@ -205,7 +205,6 @@ def postDeviceData(request):
     device.save()
     device_map = {
         "fan": "smarthome-fan",
-        "led": "smarthome-led",
         "waterpump": "smarthome-waterpump"
     }
 
@@ -248,6 +247,91 @@ def postDeviceData(request):
         print("Error", repondse.text)
 
     return JsonResponse({"message": "Device updated successfully"}, status=200)
+
+
+
+
+@api_view(['POST'])  # hoặc GET/DELETE tùy API của bạn
+@permission_classes([IsAuthenticated])
+def postDeviceDataLED(request):
+    if request.method != "POST":
+        return JsonResponse({"message": "Invalid request method"}, status=405)
+
+    data = json.loads(request.body)
+    device_id = data.get("device_id")
+    on_off = data.get("on_off")
+    value = data.get("value")
+      # Chuyển đổi về kiểu số nguyên nếu có giá trị
+    
+    pinned = data.get("pinned")
+    id = data.get("id")
+
+    if not on_off and not value:
+        return JsonResponse({"message": "on_off or level is required"}, status=400)
+
+    try:
+        device = models.Device.objects.get(device_id=device_id)  # Lấy instance của Device
+    except models.Device.DoesNotExist:
+        return JsonResponse({"message": "Device not found"}, status=404)
+    try:
+        user = models.User.objects.get(id=id)  # Lấy instance của User (nếu có)
+    except models.User.DoesNotExist:
+        return JsonResponse({"message": "User not found"}, status=404)
+
+    
+    # Cập nhật trạng thái của thiết bị
+    device.on_off = on_off 
+    device.value = value
+    device.pinned = pinned  
+    device.save()
+    device_map = {
+        "led": "smarthome-led",
+    }
+
+    if device.type not in device_map:
+        return JsonResponse({"message": "Invalid device type for Adafruit"}, status=400)
+
+    url = f"https://io.adafruit.com/api/v2/nhu_lephanbao/feeds/{device_map[device.type]}/data"
+
+
+    
+    models.LogDevice.objects.create(
+        device=device,
+        action="Device state updated",
+        on_off=on_off,
+        value=value,  # Giả sử level là giá trị của thiết bị
+    )  
+
+    #Gửi dữ liệu lên Adafruit IO
+    fake_request = request
+    # value = int(value)  
+    # value= int(device_id)*1000+ value
+    # value = str(value)
+    # value = "0"+value
+    id = value[len(value)-2]+value[len(value)-1]
+    print("id",id)
+    if (int(id) %4 ==0):
+        newValue = value[0:len(value)-2]+"00"
+    elif (int(id) %4 ==1):
+        newValue = value[0:len(value)-2]+"01"
+    elif (int(id) %4 ==2):
+        newValue = value[0:len(value)-2]+"02"
+    elif (int(id) %4 ==3):
+        newValue = value[0:len(value)-2]+"03"
+
+    print("newValue",newValue)
+    feedData = {
+                "value": newValue,
+            }
+    
+    repondse=requests.post(url, headers=headers, json=feedData)
+    if repondse.status_code == 200 or repondse.status_code == 201:
+        print("Success")
+    else:
+        print("Error", repondse.text)
+
+    return JsonResponse({"message": "Device updated successfully"}, status=200)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

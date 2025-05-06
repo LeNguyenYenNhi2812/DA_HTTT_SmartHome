@@ -10,6 +10,9 @@ urlpatterns = [
    path('sensorDataTime/<int:roomid>', views.getRoomSensorDataTime, name='getRoomSensorDataTime'),
    path('createDevice', views.createDevice, name='createDevice'),
    path('postDeviceData', views.postDeviceData, name='postDeviceData'),
+   path('postDeviceDataLED', views.postDeviceDataLED, name='postDeviceDataLED'),
+
+   
    path('deleteDevice/<int:deviceid>', views.deleteDevice, name='deleteDevice'),
    path('getCommonValue/<int:deviceid>', views.getCommonValue, name='getCommonValue'),
    path('createSensor', views.createSensor, name='postSensorData'),
